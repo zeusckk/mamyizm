@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { FUNDS, FUND_CATEGORIES, formatPct } from '../data/mock';
+import { FUND_CATEGORIES, formatPct } from '../data/mock';
 import Sparkline from '../components/charts/Sparkline';
 import { Search, ArrowUpDown } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const RiskBar = ({ level }) => (
   <div className="flex gap-0.5">
@@ -13,16 +14,17 @@ const RiskBar = ({ level }) => (
 );
 
 const Funds = () => {
+  const { funds } = useAuth();
   const [cat, setCat] = useState('all');
   const [q, setQ] = useState('');
-  const [sortBy, setSortBy] = useState('change24h');
+  const [sortBy, setSortBy] = useState('change_24h');
   const [dir, setDir] = useState('desc');
 
   const list = useMemo(() => {
-    let l = FUNDS.filter((f) => (cat === 'all' || f.category === cat) && (!q || f.name.toLowerCase().includes(q.toLowerCase()) || f.code.toLowerCase().includes(q.toLowerCase())));
+    let l = funds.filter((f) => (cat === 'all' || f.category === cat) && (!q || f.name.toLowerCase().includes(q.toLowerCase()) || f.code.toLowerCase().includes(q.toLowerCase())));
     l = [...l].sort((a, b) => dir === 'asc' ? a[sortBy] - b[sortBy] : b[sortBy] - a[sortBy]);
     return l;
-  }, [cat, q, sortBy, dir]);
+  }, [cat, q, sortBy, dir, funds]);
 
   const sortCol = (col) => {
     if (sortBy === col) setDir(dir === 'asc' ? 'desc' : 'asc');
@@ -58,8 +60,8 @@ const Funds = () => {
                 <th className="text-left px-5 py-3 font-semibold">Fon</th>
                 <th className="text-left px-5 py-3 font-semibold">Kategori</th>
                 <th className="text-right px-5 py-3 font-semibold"><button onClick={() => sortCol('price')} className="inline-flex items-center gap-1">Fiyat <ArrowUpDown size={12} /></button></th>
-                <th className="text-right px-5 py-3 font-semibold"><button onClick={() => sortCol('change24h')} className="inline-flex items-center gap-1">Günlük % <ArrowUpDown size={12} /></button></th>
-                <th className="text-right px-5 py-3 font-semibold"><button onClick={() => sortCol('changeYtd')} className="inline-flex items-center gap-1">YBB % <ArrowUpDown size={12} /></button></th>
+                <th className="text-right px-5 py-3 font-semibold"><button onClick={() => sortCol('change_24h')} className="inline-flex items-center gap-1">Günlük % <ArrowUpDown size={12} /></button></th>
+                <th className="text-right px-5 py-3 font-semibold"><button onClick={() => sortCol('change_ytd')} className="inline-flex items-center gap-1">YBB % <ArrowUpDown size={12} /></button></th>
                 <th className="text-center px-5 py-3 font-semibold">Risk</th>
                 <th className="text-center px-5 py-3 font-semibold">30G</th>
                 <th className="text-right px-5 py-3 font-semibold">İşlem</th>
@@ -77,12 +79,12 @@ const Funds = () => {
                       </div>
                     </Link>
                   </td>
-                  <td className="px-5 py-4 text-slate-600">{f.categoryLabel}</td>
+                  <td className="px-5 py-4 text-slate-600">{f.category_label}</td>
                   <td className="px-5 py-4 text-right font-semibold text-[#0B2447]">{f.price.toFixed(4)}</td>
-                  <td className={`px-5 py-4 text-right font-semibold ${f.change24h >= 0 ? 'fa-positive' : 'fa-negative'}`}>{formatPct(f.change24h)}</td>
-                  <td className={`px-5 py-4 text-right font-semibold ${f.changeYtd >= 0 ? 'fa-positive' : 'fa-negative'}`}>{formatPct(f.changeYtd)}</td>
+                  <td className={`px-5 py-4 text-right font-semibold ${f.change_24h >= 0 ? 'fa-positive' : 'fa-negative'}`}>{formatPct(f.change_24h)}</td>
+                  <td className={`px-5 py-4 text-right font-semibold ${f.change_ytd >= 0 ? 'fa-positive' : 'fa-negative'}`}>{formatPct(f.change_ytd)}</td>
                   <td className="px-5 py-4"><div className="flex justify-center"><RiskBar level={f.risk} /></div></td>
-                  <td className="px-5 py-4"><div className="flex justify-center"><Sparkline data={f.series} width={70} height={28} color={f.change24h >= 0 ? '#10B981' : '#EF4444'} /></div></td>
+                  <td className="px-5 py-4"><div className="flex justify-center"><Sparkline data={f.series} width={70} height={28} color={f.change_24h >= 0 ? '#10B981' : '#EF4444'} /></div></td>
                   <td className="px-5 py-4 text-right">
                     <Link to={`/islem/${f.code}`} className="inline-block px-3 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 rounded-md hover:bg-emerald-100">Al / Sat</Link>
                   </td>

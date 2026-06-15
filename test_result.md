@@ -101,3 +101,173 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: |
+  Build FonAkış - a Turkish investment/portfolio management platform inspired by ÖYAK Portföy.
+  Full-stack app with JWT auth + MongoDB. Features: register/login, dashboard, fund browsing,
+  buy/sell trades, portfolio tracking, cash deposit/withdraw, transaction history, news, profile.
+
+backend:
+  - task: "JWT Auth (register/login/me/profile/password)"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py, /app/backend/auth.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented register, login, /me, PATCH profile, change-password. JWT HS256 7d. bcrypt for passwords. Email unique index."
+      - working: true
+        agent: "testing"
+        comment: "✓ All auth endpoints working correctly. Register creates user with JWT token. Login validates credentials (401 on wrong password). GET /me requires Bearer token (401 without). PATCH /profile updates user fields. Change-password validates current password (400 on wrong), updates hash, new password login works."
+
+  - task: "Funds list/detail endpoints (seeded)"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py, /app/backend/seed_data.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "12 funds seeded on startup, public GET /api/funds and /api/funds/{code}."
+      - working: true
+        agent: "testing"
+        comment: "✓ Funds endpoints working. GET /api/funds returns 12 funds with all required fields (code, name, category, category_label, price, change_24h, change_ytd, risk, aum, manager, currency, series, desc). GET /api/funds/{code} returns single fund. 404 for non-existent fund code."
+
+  - task: "Portfolio endpoint with holdings + P/L calc"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "GET /api/portfolio returns cash_balance + holdings (joined with live fund price) + total_value/cost/pl/pct."
+      - working: true
+        agent: "testing"
+        comment: "✓ Portfolio endpoint working correctly. Initial state: cash_balance=0, holdings=[], totals=0. After trades: holdings show correct units, avg_cost, current_price. P/L calculations accurate (total_value, total_cost, total_pl, total_pl_pct)."
+
+  - task: "Trade buy/sell with avg cost calc"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "POST /api/trade/buy & /api/trade/sell. Validates cash/units, updates holdings with weighted avg, deducts/adds cash, records transaction."
+      - working: true
+        agent: "testing"
+        comment: "✓ Trade endpoints working perfectly. Buy: validates cash balance (400 on insufficient), deducts cost, creates/updates holding with weighted avg cost. Multiple buys to same fund correctly calculate weighted average. Sell: validates units (400 on insufficient/no holding), adds proceeds to cash, updates/removes holding. Transaction recorded for each trade."
+
+  - task: "Cash deposit/withdraw"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "POST /api/cash/deposit & withdraw. Updates user cash_balance and records transaction. Withdraw validates balance."
+      - working: true
+        agent: "testing"
+        comment: "✓ Cash operations working. Deposit: adds amount to cash_balance, records transaction. Withdraw: validates balance (400 on insufficient), deducts amount, records transaction. Both return updated cash_balance and transaction details."
+
+  - task: "Transactions list with filters"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "GET /api/transactions with optional type/status query filters, sorted by date desc."
+      - working: true
+        agent: "testing"
+        comment: "✓ Transactions endpoint working. GET /api/transactions returns all user transactions sorted by date desc. Filter by type works correctly (tested with type=Alım, returned only buy transactions). All transaction fields present (id, date, type, code, units, price, total, status)."
+
+  - task: "News endpoint (seeded)"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Public GET /api/news returning 6 seeded items."
+      - working: true
+        agent: "testing"
+        comment: "✓ News endpoint working. GET /api/news returns 6 seeded news items with all required fields (id, date, tag, title, summary). Public endpoint, no auth required."
+
+frontend:
+  - task: "Auth context wired to backend"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/context/AuthContext.jsx, /app/frontend/src/api/client.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "axios client with Bearer interceptor + 401 redirect. AuthContext uses real API for login/register/buy/sell/deposit/withdraw."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "JWT Auth (register/login/me/profile/password)"
+    - "Funds list/detail endpoints (seeded)"
+    - "Portfolio endpoint with holdings + P/L calc"
+    - "Trade buy/sell with avg cost calc"
+    - "Cash deposit/withdraw"
+    - "Transactions list with filters"
+    - "News endpoint (seeded)"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: |
+      Backend implemented (FastAPI + MongoDB + JWT). 12 funds + 6 news items seeded on startup.
+      Test full lifecycle: register -> login -> me -> deposit cash -> list funds -> buy -> portfolio -> sell -> transactions -> withdraw.
+      Auth uses Bearer token. All routes under /api prefix.
+      Note: passlib + bcrypt + pyjwt already in requirements.txt. JWT_SECRET in backend/.env.
+  - agent: "testing"
+    message: |
+      ✅ BACKEND TESTING COMPLETE - ALL 24 TESTS PASSED
+      
+      Tested full lifecycle scenario:
+      1. Auth: register, login (correct/wrong password), /me (with/without token), profile update, password change
+      2. Funds: list 12 funds, get single fund, 404 for non-existent
+      3. Portfolio: initial state, holdings with P/L calculations
+      4. Trading: buy (single/multiple/insufficient), sell (success/insufficient/no holding), weighted avg cost
+      5. Cash: deposit, withdraw (success/insufficient)
+      6. Transactions: list all, filter by type, sorted desc
+      7. News: list 6 items
+      
+      All endpoints return correct status codes, response shapes, and data.
+      Validations working (insufficient balance, wrong password, missing holdings).
+      Weighted average cost calculation verified.
+      Transaction recording confirmed.
+      
+      Backend is production-ready. No issues found.

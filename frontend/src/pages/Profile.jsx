@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { authApi } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -9,17 +10,30 @@ import { toast } from 'sonner';
 import { User, Bell, Shield, KeyRound } from 'lucide-react';
 
 const Profile = () => {
-  const { user } = useAuth();
-  const [form, setForm] = useState({ fullName: user?.fullName || '', email: user?.email || '', phone: user?.phone || '', tckn: user?.tckn || '' });
+  const { user, updateUser } = useAuth();
+  const [form, setForm] = useState({ fullName: user?.full_name || '', email: user?.email || '', phone: user?.phone || '', tckn: user?.tckn || '' });
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
   const [notifs, setNotifs] = useState({ email: true, sms: false, push: true, news: true, priceAlerts: false });
 
-  const save = () => toast.success('Profil bilgileri güncellendi (demo)');
-  const changePw = () => {
+  const save = async () => {
+    try {
+      const r = await authApi.updateProfile({ full_name: form.fullName, phone: form.phone, tckn: form.tckn });
+      updateUser(r.user);
+      toast.success('Profil bilgileri güncellendi');
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Güncelleme başarısız');
+    }
+  };
+  const changePw = async () => {
     if (!pw.current || !pw.next) return toast.error('Tüm alanları doldurun');
     if (pw.next !== pw.confirm) return toast.error('Yeni şifreler eşleşmiyor');
-    toast.success('Şifre değiştirildi (demo)');
-    setPw({ current: '', next: '', confirm: '' });
+    try {
+      await authApi.changePassword({ current: pw.current, next: pw.next });
+      toast.success('Şifre değiştirildi');
+      setPw({ current: '', next: '', confirm: '' });
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Şifre değiştirme başarısız');
+    }
   };
 
   return (
@@ -41,10 +55,10 @@ const Profile = () => {
             <h3 className="font-bold text-[#0B2447] mb-5" style={{ fontFamily: 'Manrope' }}>Kişisel Bilgiler</h3>
             <div className="flex items-center gap-4 mb-6">
               <div className="h-16 w-16 rounded-full bg-[#0B2447] text-white flex items-center justify-center text-xl font-bold">
-                {user?.fullName?.split(' ').map((n) => n[0]).slice(0, 2).join('')}
+                {user?.full_name?.split(' ').map((n) => n[0]).slice(0, 2).join('')}
               </div>
               <div>
-                <div className="font-bold text-[#0B2447]">{user?.fullName}</div>
+                <div className="font-bold text-[#0B2447]">{user?.full_name}</div>
                 <div className="text-sm text-slate-500">Hesap oluşturulma: Tem 2025</div>
               </div>
             </div>

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { FUNDS, formatTRY, formatPct } from '../data/mock';
+import { formatTRY, formatPct } from '../data/mock';
 import Sparkline from '../components/charts/Sparkline';
 import { ArrowUpRight, ArrowDownRight, TrendingUp, Wallet, PiggyBank, Activity } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -22,26 +22,26 @@ const StatCard = ({ icon: Icon, label, value, change, positive }) => (
 );
 
 const Dashboard = () => {
-  const { user, holdings, cashBalance } = useAuth();
+  const { user, holdings, cashBalance, funds } = useAuth();
   const navigate = useNavigate();
 
   const portfolioStats = useMemo(() => {
     let totalValue = 0, totalCost = 0;
-    holdings.forEach((h) => { totalValue += h.units * h.currentPrice; totalCost += h.units * h.avgCost; });
+    holdings.forEach((h) => { totalValue += h.units * h.current_price; totalCost += h.units * h.avg_cost; });
     const pl = totalValue - totalCost;
     const plPct = totalCost ? (pl / totalCost) * 100 : 0;
     return { totalValue, totalCost, pl, plPct };
   }, [holdings]);
 
   const netAssets = portfolioStats.totalValue + cashBalance;
-  const topGainers = [...FUNDS].sort((a, b) => b.change24h - a.change24h).slice(0, 4);
-  const topLosers = [...FUNDS].sort((a, b) => a.change24h - b.change24h).slice(0, 4);
+  const topGainers = [...funds].sort((a, b) => b.change_24h - a.change_24h).slice(0, 4);
+  const topLosers = [...funds].sort((a, b) => a.change_24h - b.change_24h).slice(0, 4);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#0B2447]" style={{ fontFamily: 'Manrope' }}>Hoş geldiniz, {user?.fullName?.split(' ')[0]}</h1>
+          <h1 className="text-2xl font-bold text-[#0B2447]" style={{ fontFamily: 'Manrope' }}>Hoş geldiniz, {user?.full_name?.split(' ')[0]}</h1>
           <p className="text-slate-500 text-sm mt-1">Portföyünüzün güncel durumuna bir göz atın.</p>
         </div>
         <div className="flex gap-2">
@@ -70,7 +70,7 @@ const Dashboard = () => {
               ))}
             </div>
           </div>
-          <Sparkline data={FUNDS[0].series} width={800} height={180} color="#0B2447" strokeWidth={2.5} />
+          {funds[0] && <Sparkline data={funds[0].series} width={800} height={180} color="#0B2447" strokeWidth={2.5} />}
         </div>
 
         <div className="fa-card fa-glow p-6">
@@ -105,14 +105,14 @@ const Dashboard = () => {
                     <div className="h-9 w-9 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-[#0B2447]">{f.code}</div>
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-[#0B2447] truncate">{f.name}</div>
-                      <div className="text-[11px] text-slate-500">{f.categoryLabel}</div>
+                      <div className="text-[11px] text-slate-500">{f.category_label}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <Sparkline data={f.series} width={60} height={24} color={f.change24h >= 0 ? '#10B981' : '#EF4444'} />
+                    <Sparkline data={f.series} width={60} height={24} color={f.change_24h >= 0 ? '#10B981' : '#EF4444'} />
                     <div className="text-right w-20">
                       <div className="text-sm font-semibold text-[#0B2447]">{f.price.toFixed(4)}</div>
-                      <div className={`text-xs font-medium ${f.change24h >= 0 ? 'fa-positive' : 'fa-negative'}`}>{formatPct(f.change24h)}</div>
+                      <div className={`text-xs font-medium ${f.change_24h >= 0 ? 'fa-positive' : 'fa-negative'}`}>{formatPct(f.change_24h)}</div>
                     </div>
                   </div>
                 </Link>

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { MOCK_NEWS } from '../data/mock';
+import React, { useEffect, useState } from 'react';
 import { Calendar, Tag } from 'lucide-react';
+import { newsApi } from '../api/client';
 
 const tagColor = (t) => {
   if (t === 'Piyasa') return 'bg-blue-50 text-blue-700';
@@ -12,9 +12,16 @@ const tagColor = (t) => {
 };
 
 const News = () => {
+  const [items, setItems] = useState([]);
   const [filter, setFilter] = useState('all');
-  const tags = ['all', ...Array.from(new Set(MOCK_NEWS.map((n) => n.tag)))];
-  const list = filter === 'all' ? MOCK_NEWS : MOCK_NEWS.filter((n) => n.tag === filter);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    newsApi.list().then((d) => { setItems(d); setLoading(false); }).catch(() => setLoading(false));
+  }, []);
+
+  const tags = ['all', ...Array.from(new Set(items.map((n) => n.tag)))];
+  const list = filter === 'all' ? items : items.filter((n) => n.tag === filter);
 
   return (
     <div className="space-y-6">
@@ -31,6 +38,9 @@ const News = () => {
         ))}
       </div>
 
+      {loading ? (
+        <div className="fa-card fa-glow p-8 text-center text-slate-400">Yükleniyor…</div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {list.map((n, i) => (
           <article key={n.id} className={`fa-card fa-glow p-6 hover:shadow-lg transition-shadow cursor-pointer ${i === 0 && filter === 'all' ? 'lg:col-span-2 fa-gradient-navy text-white' : ''}`}>
@@ -44,6 +54,7 @@ const News = () => {
           </article>
         ))}
       </div>
+      )}
     </div>
   );
 };

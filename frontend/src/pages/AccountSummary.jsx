@@ -57,7 +57,7 @@ const AccountSummary = () => {
           <div>
             <div className="text-xs text-blue-200 uppercase tracking-wider mb-2">Kullanılabilir Nakit Bakiye</div>
             <div className="text-4xl font-extrabold" style={{ fontFamily: 'Manrope' }}>{formatTRY(cashBalance)}</div>
-            <div className="text-xs text-blue-200 mt-2">Hesap Sahibi: {user?.fullName}</div>
+            <div className="text-xs text-blue-200 mt-2">Hesap Sahibi: {user?.full_name}</div>
           </div>
           <div className="flex gap-2">
             <Dialog open={depOpen} onOpenChange={setDepOpen}>
@@ -101,7 +101,7 @@ const AccountSummary = () => {
                   </div>
                   <div className="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg flex items-start gap-2">
                     <CreditCard size={14} className="mt-0.5" />
-                    <span>Tanımlı IBAN: {user?.ibanMasked || 'TR** **** ****'}</span>
+                    <span>Tanımlı IBAN: {user?.iban_masked || 'TR** **** ****'}</span>
                   </div>
                 </div>
                 <DialogFooter>
@@ -135,12 +135,12 @@ const AccountSummary = () => {
         <h3 className="font-bold text-[#0B2447] mb-4" style={{ fontFamily: 'Manrope' }}>Hesap Bilgileri</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           {[
-            ['Ad Soyad', user?.fullName],
+            ['Ad Soyad', user?.full_name],
             ['E-posta', user?.email],
             ['Telefon', user?.phone],
-            ['IBAN', user?.ibanMasked],
+            ['IBAN', user?.iban_masked],
             ['Aktif Pozisyon', `${holdings.length} fon`],
-            ['Toplam Yatırım', formatTRY(user?.totalDeposits)],
+            ['Toplam Yatırım', formatTRY(user?.total_deposits)],
           ].map(([l, v]) => (
             <div key={l} className="flex justify-between border-b border-slate-100 pb-3">
               <span className="text-slate-500">{l}</span>

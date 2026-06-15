@@ -58,10 +58,10 @@ const DashboardLayout = () => {
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 hover:bg-slate-50 px-2 py-1.5 rounded-lg">
                   <div className="h-8 w-8 rounded-full bg-[#0B2447] text-white flex items-center justify-center text-sm font-semibold">
-                    {user?.fullName?.split(' ').map((n) => n[0]).slice(0, 2).join('') || 'K'}
+                    {user?.full_name?.split(' ').map((n) => n[0]).slice(0, 2).join('') || 'K'}
                   </div>
                   <div className="hidden md:block text-left">
-                    <div className="text-sm font-medium leading-4">{user?.fullName}</div>
+                    <div className="text-sm font-medium leading-4">{user?.full_name}</div>
                     <div className="text-[11px] text-slate-500 leading-4">{user?.email}</div>
                   </div>
                   <ChevronDown size={14} className="text-slate-400" />

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FUNDS, formatTRY, formatNum, formatPct } from '../data/mock';
+import { formatTRY, formatNum, formatPct } from '../data/mock';
 import { Briefcase, TrendingUp, TrendingDown } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
@@ -29,15 +29,15 @@ const DonutChart = ({ data, size = 180 }) => {
 };
 
 const Portfolio = () => {
-  const { holdings, cashBalance } = useAuth();
+  const { holdings, cashBalance, funds } = useAuth();
 
   const rows = useMemo(() => holdings.map((h) => {
-    const f = FUNDS.find((x) => x.code === h.code);
-    const price = f ? f.price : h.currentPrice;
+    const f = funds.find((x) => x.code === h.code);
+    const price = f ? f.price : h.current_price;
     const value = h.units * price;
-    const cost = h.units * h.avgCost;
+    const cost = h.units * h.avg_cost;
     return { ...h, fund: f, price, value, cost, pl: value - cost, plPct: cost ? ((value - cost) / cost) * 100 : 0 };
-  }), [holdings]);
+  }), [holdings, funds]);
 
   const totalValue = rows.reduce((s, r) => s + r.value, 0);
   const totalCost = rows.reduce((s, r) => s + r.cost, 0);
@@ -134,12 +134,12 @@ const Portfolio = () => {
                         <div className="h-9 w-9 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-[#0B2447]">{r.code}</div>
                         <div>
                           <div className="font-semibold text-[#0B2447]">{r.fund?.name}</div>
-                          <div className="text-[11px] text-slate-500">{r.fund?.categoryLabel}</div>
+                          <div className="text-[11px] text-slate-500">{r.fund?.category_label}</div>
                         </div>
                       </Link>
                     </td>
                     <td className="px-5 py-4 text-right">{formatNum(r.units, 2)}</td>
-                    <td className="px-5 py-4 text-right">{r.avgCost.toFixed(4)}</td>
+                    <td className="px-5 py-4 text-right">{r.avg_cost.toFixed(4)}</td>
                     <td className="px-5 py-4 text-right font-semibold">{r.price.toFixed(4)}</td>
                     <td className="px-5 py-4 text-right font-bold text-[#0B2447]">{formatTRY(r.value)}</td>
                     <td className={`px-5 py-4 text-right font-semibold ${r.pl >= 0 ? 'fa-positive' : 'fa-negative'}`}>

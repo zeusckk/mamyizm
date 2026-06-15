@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FUNDS, formatTRY, formatNum, formatPct } from '../data/mock';
+import { formatTRY, formatNum, formatPct } from '../data/mock';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -13,17 +13,17 @@ import { AlertCircle, CheckCircle2 } from 'lucide-react';
 const Trade = () => {
   const { code } = useParams();
   const nav = useNavigate();
-  const { holdings, cashBalance, buyFund, sellFund } = useAuth();
+  const { holdings, cashBalance, buyFund, sellFund, funds } = useAuth();
 
-  const [selected, setSelected] = useState(code || FUNDS[0].code);
+  const [selected, setSelected] = useState(code || '');
   const [mode, setMode] = useState('buy');
   const [amount, setAmount] = useState(''); // TRY amount
   const [units, setUnits] = useState('');
   const [confirm, setConfirm] = useState(false);
 
-  useEffect(() => { if (code) setSelected(code); }, [code]);
+  useEffect(() => { if (code) setSelected(code); else if (!selected && funds.length) setSelected(funds[0].code); }, [code, funds, selected]);
 
-  const fund = useMemo(() => FUNDS.find((f) => f.code === selected), [selected]);
+  const fund = useMemo(() => funds.find((f) => f.code === selected), [selected, funds]);
   const holding = holdings.find((h) => h.code === selected);
 
   const handleAmount = (v) => {
@@ -49,7 +49,7 @@ const Trade = () => {
   };
 
   if (!fund) return null;
-  const positive = fund.change24h >= 0;
+  const positive = fund.change_24h >= 0;
 
   return (
     <div className="space-y-6">
@@ -71,7 +71,7 @@ const Trade = () => {
                 <Select value={selected} onValueChange={(v) => { setSelected(v); setAmount(''); setUnits(''); }}>
                   <SelectTrigger className="mt-1.5 h-11"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {FUNDS.map((f) => (
+                    {funds.map((f) => (
                       <SelectItem key={f.code} value={f.code}>{f.code} — {f.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -101,7 +101,7 @@ const Trade = () => {
                   <SelectContent>
                     {holdings.length === 0 && <div className="px-3 py-2 text-sm text-slate-400">Pozisyonunuz yok</div>}
                     {holdings.map((h) => {
-                      const f = FUNDS.find((x) => x.code === h.code);
+                      const f = funds.find((x) => x.code === h.code);
                       return <SelectItem key={h.code} value={h.code}>{h.code} — {f?.name} ({formatNum(h.units, 2)} pay)</SelectItem>;
                     })}
                   </SelectContent>
@@ -158,9 +158,9 @@ const Trade = () => {
           <div className="fa-card fa-glow p-5">
             <div className="text-xs text-slate-500 mb-1">Seçili Fon</div>
             <div className="font-bold text-[#0B2447]" style={{ fontFamily: 'Manrope' }}>{fund.name}</div>
-            <div className="text-xs text-slate-500 mb-3">{fund.categoryLabel}</div>
+            <div className="text-xs text-slate-500 mb-3">{fund.category_label}</div>
             <div className="text-2xl font-extrabold text-[#0B2447]" style={{ fontFamily: 'Manrope' }}>{fund.price.toFixed(4)} <span className="text-sm font-medium text-slate-400">TRY</span></div>
-            <div className={`text-sm font-semibold ${positive ? 'fa-positive' : 'fa-negative'}`}>{formatPct(fund.change24h)} bugün</div>
+            <div className={`text-sm font-semibold ${positive ? 'fa-positive' : 'fa-negative'}`}>{formatPct(fund.change_24h)} bugün</div>
           </div>
           <div className="fa-card fa-glow p-5">
             <div className="text-xs text-slate-500 mb-2">Kullanılabilir Bakiye</div>
