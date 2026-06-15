@@ -27,6 +27,8 @@ import AdminReports from './pages/admin/AdminReports';
 import AdminAdmins from './pages/admin/AdminAdmins';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminAuditLog from './pages/admin/AdminAuditLog';
+import AdminPaymentMethods from './pages/admin/AdminPaymentMethods';
+import AdminDepositRequests from './pages/admin/AdminDepositRequests';
 
 const Loading = () => <div className="min-h-screen flex items-center justify-center text-slate-400">Yükleniyor…</div>;
 
@@ -79,6 +81,8 @@ function App() {
                 <Route path="/admin/kullanicilar" element={<AdminUsers />} />
                 <Route path="/admin/kyc" element={<AdminKyc />} />
                 <Route path="/admin/islemler" element={<AdminTransactions />} />
+                <Route path="/admin/yatirim-talepleri" element={<AdminDepositRequests />} />
+                <Route path="/admin/odeme-yontemleri" element={<AdminPaymentMethods />} />
                 <Route path="/admin/haberler" element={<AdminNews />} />
                 <Route path="/admin/raporlar" element={<AdminReports />} />
                 <Route path="/admin/yoneticiler" element={<AdminAdmins />} />

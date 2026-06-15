@@ -54,8 +54,16 @@ export const tradeApi = {
 };
 
 export const cashApi = {
-  deposit: (amount) => api.post('/cash/deposit', { amount }).then((r) => r.data),
+  deposit: (data) => api.post('/cash/deposit', data).then((r) => r.data),
   withdraw: (amount) => api.post('/cash/withdraw', { amount }).then((r) => r.data),
+};
+
+export const paymentMethodsApi = {
+  listActive: () => api.get('/payment-methods').then((r) => r.data),
+};
+
+export const depositRequestsApi = {
+  myList: (status) => api.get('/deposit-requests', { params: { status } }).then((r) => r.data),
 };
 
 export const txApi = {
@@ -103,4 +111,14 @@ export const adminApi = {
   updateSettings: (data) => api.patch('/admin/settings', data).then((r) => r.data),
   // Audit log
   auditLog: (params = {}) => api.get('/admin/audit-log', { params }).then((r) => r.data),
+  // Payment methods
+  listPaymentMethods: (params = {}) => api.get('/admin/payment-methods', { params }).then((r) => r.data),
+  createPaymentMethod: (data) => api.post('/admin/payment-methods', data).then((r) => r.data),
+  updatePaymentMethod: (id, data) => api.patch(`/admin/payment-methods/${id}`, data).then((r) => r.data),
+  deletePaymentMethod: (id) => api.delete(`/admin/payment-methods/${id}`).then((r) => r.data),
+  // Deposit requests
+  listDepositRequests: (params = {}) => api.get('/admin/deposit-requests', { params }).then((r) => r.data),
+  depositRequestDetail: (id) => api.get(`/admin/deposit-requests/${id}`).then((r) => r.data),
+  approveDepositRequest: (id) => api.post(`/admin/deposit-requests/${id}/approve`).then((r) => r.data),
+  rejectDepositRequest: (id, reason) => api.post(`/admin/deposit-requests/${id}/reject`, { reason }).then((r) => r.data),
 };

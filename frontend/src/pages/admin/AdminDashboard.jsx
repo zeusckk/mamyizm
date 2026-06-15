@@ -40,6 +40,22 @@ const AdminDashboard = () => {
         <Button variant="outline" size="sm" onClick={load} className="border-slate-300"><RefreshCw size={13} className="mr-1.5" /> Yenile</Button>
       </div>
 
+      {/* Pending deposit alert */}
+      {data.deposits?.pending > 0 && (
+        <Link to="/admin/yatirim-talepleri" className="block">
+          <div className="fa-card fa-glow p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200 flex items-center justify-between gap-3 hover:shadow-md transition" data-testid="pending-deposit-alert">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-lg">{data.deposits.pending}</div>
+              <div>
+                <div className="font-bold text-amber-900">Bekleyen Yatırım Talebi</div>
+                <div className="text-xs text-amber-700">Onayınızı bekleyen kullanıcı para yatırma talebi var.</div>
+              </div>
+            </div>
+            <ArrowUpRight size={18} className="text-amber-700" />
+          </div>
+        </Link>
+      )}
+
       {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Stat icon={Users} label="Toplam Kullanıcı" value={data.users.total} sub={`${data.users.active} aktif • ${data.users.suspended} askıda`} bg="bg-blue-50" color="text-blue-700" />

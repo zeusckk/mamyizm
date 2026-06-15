@@ -87,12 +87,11 @@ export const AuthProvider = ({ children }) => {
     } catch (e) { return { ok: false, msg: e.response?.data?.detail || 'Hata oluştu' }; }
   };
 
-  const depositCash = async (amount) => {
+  const depositCash = async (data) => {
     try {
-      const r = await cashApi.deposit(amount);
-      setCashBalance(r.cash_balance);
+      const r = await cashApi.deposit(data);
       await refreshTransactions();
-      return { ok: true };
+      return { ok: true, ...r };
     } catch (e) { return { ok: false, msg: e.response?.data?.detail || 'Hata' }; }
   };
 

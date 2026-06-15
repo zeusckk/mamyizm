@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useOutlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Users, ShieldCheck, ListOrdered, Newspaper, BarChart2, UserCog, Settings, FileClock, LogOut, Menu, X, ChevronDown, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Users, ShieldCheck, ListOrdered, Newspaper, BarChart2, UserCog, Settings, FileClock, LogOut, Menu, X, ChevronDown, ShieldAlert, Wallet, Banknote } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -9,6 +9,8 @@ const nav = [
   { to: '/admin/panel', label: 'Genel Bakış', icon: LayoutDashboard },
   { to: '/admin/kullanicilar', label: 'Kullanıcılar', icon: Users },
   { to: '/admin/kyc', label: 'KYC Onayları', icon: ShieldCheck },
+  { to: '/admin/yatirim-talepleri', label: 'Yatırım Talepleri', icon: Banknote },
+  { to: '/admin/odeme-yontemleri', label: 'Ödeme Yöntemleri', icon: Wallet },
   { to: '/admin/islemler', label: 'İşlemler', icon: ListOrdered },
   { to: '/admin/haberler', label: 'Haber Yönetimi', icon: Newspaper },
   { to: '/admin/raporlar', label: 'Raporlar', icon: BarChart2 },

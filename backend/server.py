@@ -11,7 +11,7 @@ from typing import Optional
 from auth import hash_password, verify_password, create_token, get_current_user_id
 from models import (
     RegisterIn, LoginIn, ProfileUpdate, ChangePasswordIn,
-    TradeIn, CashIn, KycSubmitIn, new_id,
+    TradeIn, CashIn, KycSubmitIn, DepositRequestIn, new_id,
 )
 import market
 from admin import make_admin_router, seed_default_admin
@@ -331,14 +331,73 @@ async def sell(body: TradeIn, uid: str = Depends(get_current_user_id)):
 
 # ---------- cash ----------
 @api.post('/cash/deposit')
-async def deposit(body: CashIn, uid: str = Depends(get_current_user_id)):
-    u = await get_user(uid)
-    new_cash = u.get('cash_balance', 0) + body.amount
-    new_total = u.get('total_deposits', 0) + body.amount
-    await db.users.update_one({'_id': uid}, {'$set': {'cash_balance': new_cash, 'total_deposits': new_total}})
-    tx = await _record_tx(uid, 'Para Yatırma', '-', 0, 0, body.amount)
-    tx.pop('_id', None); tx.pop('user_id', None)
-    return {'cash_balance': new_cash, 'transaction': tx}
+async def deposit(body: DepositRequestIn, uid: str = Depends(get_current_user_id)):
+    """Create a pending deposit request that admin must approve."""
+    pm = await db.payment_methods.find_one({'_id': body.payment_method_id, 'active': True})
+    if not pm:
+        raise HTTPException(404, 'Geçersiz ödeme yöntemi')
+    if body.receipt_base64:
+        approx_bytes = (len(body.receipt_base64) * 3) // 4
+        if approx_bytes > 5 * 1024 * 1024:
+            raise HTTPException(413, 'Dekont dosyası çok büyük (maks 5 MB)')
+    doc = {
+        '_id': new_id(),
+        'user_id': uid,
+        'amount': float(body.amount),
+        'payment_method_id': body.payment_method_id,
+        'sender_name': body.sender_name,
+        'note': body.note,
+        'tx_hash': body.tx_hash,
+        'receipt_base64': body.receipt_base64,
+        'status': 'pending',
+        'created_at': datetime.now(timezone.utc),
+    }
+    await db.deposit_requests.insert_one(doc)
+    return {
+        'ok': True,
+        'request_id': doc['_id'],
+        'status': 'pending',
+        'message': 'Talebiniz alındı, yönetici onayı bekleniyor.',
+    }
+
+
+@api.get('/payment-methods')
+async def list_active_payment_methods(uid: str = Depends(get_current_user_id)):
+    """Active payment methods visible to users for deposits."""
+    items = await db.payment_methods.find({'active': True}).sort('type', 1).to_list(200)
+    out = []
+    for d in items:
+        out.append({
+            'id': d['_id'], 'type': d.get('type'), 'label': d.get('label'),
+            'bank_name': d.get('bank_name'), 'account_holder': d.get('account_holder'),
+            'iban': d.get('iban'), 'account_number': d.get('account_number'),
+            'branch': d.get('branch'),
+            'currency': d.get('currency'), 'network': d.get('network'),
+            'address': d.get('address'), 'memo': d.get('memo'),
+            'notes': d.get('notes'),
+        })
+    return out
+
+
+@api.get('/deposit-requests')
+async def my_deposit_requests(uid: str = Depends(get_current_user_id), status: Optional[str] = None):
+    q = {'user_id': uid}
+    if status and status != 'all': q['status'] = status
+    items = await db.deposit_requests.find(q).sort('created_at', -1).to_list(200)
+    out = []
+    for d in items:
+        pm = await db.payment_methods.find_one({'_id': d.get('payment_method_id')}) if d.get('payment_method_id') else None
+        out.append({
+            'id': d['_id'],
+            'amount': d.get('amount'),
+            'status': d.get('status'),
+            'payment_method_label': (pm or {}).get('label', '-'),
+            'payment_method_type': (pm or {}).get('type', '-'),
+            'rejection_reason': d.get('rejection_reason'),
+            'created_at': d.get('created_at'),
+            'reviewed_at': d.get('reviewed_at'),
+        })
+    return out
 
 
 @api.post('/cash/withdraw')

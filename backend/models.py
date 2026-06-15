@@ -52,6 +52,15 @@ class CashIn(BaseModel):
     amount: float = Field(gt=0)
 
 
+class DepositRequestIn(BaseModel):
+    amount: float = Field(gt=0)
+    payment_method_id: str
+    sender_name: Optional[str] = None
+    note: Optional[str] = None
+    receipt_base64: Optional[str] = None  # optional receipt screenshot
+    tx_hash: Optional[str] = None  # for crypto
+
+
 class KycSubmitIn(BaseModel):
     selfie_base64: str = Field(min_length=10, description='base64 encoded image (data URI or raw)')
     id_doc_base64: str = Field(min_length=10)

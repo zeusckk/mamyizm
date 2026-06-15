@@ -78,6 +78,27 @@ def make_admin_router(db, market_mod):
         password: str = Field(min_length=6)
         full_name: str
 
+    class PaymentMethodIn(BaseModel):
+        type: Literal['bank', 'crypto']
+        label: str  # display label e.g. "Garanti BBVA" or "USDT TRC20"
+        # bank fields
+        bank_name: Optional[str] = None
+        account_holder: Optional[str] = None
+        iban: Optional[str] = None
+        account_number: Optional[str] = None
+        branch: Optional[str] = None
+        # crypto fields
+        currency: Optional[str] = None  # USDT, BTC, ETH...
+        network: Optional[str] = None  # TRC20, ERC20, BEP20, Bitcoin
+        address: Optional[str] = None
+        memo: Optional[str] = None
+        # common
+        active: Optional[bool] = True
+        notes: Optional[str] = None
+
+    class DepositActionIn(BaseModel):
+        reason: Optional[str] = None
+
     # ---------- DASHBOARD STATS ----------
     @router.get('/stats')
     async def stats(admin=Depends(require_admin)):
@@ -87,6 +108,7 @@ def make_admin_router(db, market_mod):
         approved_kyc = await db.users.count_documents({'kyc_status': 'approved'})
         total_holdings = await db.holdings.count_documents({})
         total_tx = await db.transactions.count_documents({})
+        pending_deposits = await db.deposit_requests.count_documents({'status': 'pending'})
 
         # Cash aggregates
         pipe_cash = [{'$group': {'_id': None, 'total_cash': {'$sum': '$cash_balance'}, 'total_deposits': {'$sum': '$total_deposits'}}}]
@@ -132,6 +154,7 @@ def make_admin_router(db, market_mod):
             'kyc': {'pending': pending_kyc, 'approved': approved_kyc, 'none': total_users - pending_kyc - approved_kyc},
             'cash': {'total_cash_balance': total_cash, 'total_deposits': total_deposits},
             'trading': {'total_transactions': total_tx, 'total_holdings': total_holdings, 'volumes': volumes, 'top_symbols': top_symbols},
+            'deposits': {'pending': pending_deposits},
             'recent_users': recent_users,
             'recent_transactions': recent_tx,
         }
@@ -435,6 +458,134 @@ def make_admin_router(db, market_mod):
                 'admin_name': (adm or {}).get('full_name', '-'),
             })
         return {'total': total, 'items': out}
+
+    # ---------- PAYMENT METHODS ----------
+    def _pm_out(d: dict) -> dict:
+        return {
+            'id': d['_id'], 'type': d.get('type'), 'label': d.get('label'),
+            'bank_name': d.get('bank_name'), 'account_holder': d.get('account_holder'),
+            'iban': d.get('iban'), 'account_number': d.get('account_number'),
+            'branch': d.get('branch'),
+            'currency': d.get('currency'), 'network': d.get('network'),
+            'address': d.get('address'), 'memo': d.get('memo'),
+            'active': bool(d.get('active', True)),
+            'notes': d.get('notes'),
+            'created_at': d.get('created_at'),
+        }
+
+    @router.get('/payment-methods')
+    async def list_payment_methods(admin=Depends(require_admin), type: Optional[str] = None):
+        q = {}
+        if type and type != 'all': q['type'] = type
+        items = await db.payment_methods.find(q).sort('created_at', -1).to_list(200)
+        return [_pm_out(d) for d in items]
+
+    @router.post('/payment-methods')
+    async def create_payment_method(body: PaymentMethodIn, admin=Depends(require_admin)):
+        doc = {'_id': new_id(), **body.dict(), 'created_at': datetime.now(timezone.utc)}
+        await db.payment_methods.insert_one(doc)
+        await _audit(admin['_id'], 'payment_method.create', doc['_id'], {'type': doc['type'], 'label': doc['label']})
+        return _pm_out(doc)
+
+    @router.patch('/payment-methods/{pm_id}')
+    async def update_payment_method(pm_id: str, body: PaymentMethodIn, admin=Depends(require_admin)):
+        upd = {k: v for k, v in body.dict().items() if v is not None}
+        if upd:
+            await db.payment_methods.update_one({'_id': pm_id}, {'$set': upd})
+            await _audit(admin['_id'], 'payment_method.update', pm_id, upd)
+        d = await db.payment_methods.find_one({'_id': pm_id})
+        if not d: raise HTTPException(404, 'Bulunamadı')
+        return _pm_out(d)
+
+    @router.delete('/payment-methods/{pm_id}')
+    async def delete_payment_method(pm_id: str, admin=Depends(require_admin)):
+        r = await db.payment_methods.delete_one({'_id': pm_id})
+        if r.deleted_count == 0: raise HTTPException(404, 'Bulunamadı')
+        await _audit(admin['_id'], 'payment_method.delete', pm_id)
+        return {'ok': True}
+
+    # ---------- DEPOSIT REQUESTS ----------
+    async def _dr_out(d: dict) -> dict:
+        u = await db.users.find_one({'_id': d['user_id']}, {'email': 1, 'full_name': 1})
+        pm = await db.payment_methods.find_one({'_id': d.get('payment_method_id')}) if d.get('payment_method_id') else None
+        return {
+            'id': d['_id'], 'user_id': d['user_id'],
+            'user_email': (u or {}).get('email', '-'),
+            'user_name': (u or {}).get('full_name', '-'),
+            'amount': d.get('amount'),
+            'status': d.get('status'),
+            'payment_method_id': d.get('payment_method_id'),
+            'payment_method_label': (pm or {}).get('label', '-'),
+            'payment_method_type': (pm or {}).get('type', '-'),
+            'sender_name': d.get('sender_name'),
+            'note': d.get('note'),
+            'tx_hash': d.get('tx_hash'),
+            'has_receipt': bool(d.get('receipt_base64')),
+            'rejection_reason': d.get('rejection_reason'),
+            'created_at': d.get('created_at'),
+            'reviewed_at': d.get('reviewed_at'),
+        }
+
+    @router.get('/deposit-requests')
+    async def list_deposit_requests(admin=Depends(require_admin), status: Optional[str] = None, skip: int = 0, limit: int = 100):
+        q = {}
+        if status and status != 'all': q['status'] = status
+        total = await db.deposit_requests.count_documents(q)
+        items = await db.deposit_requests.find(q).sort('created_at', -1).skip(skip).limit(limit).to_list(limit)
+        out = [await _dr_out(d) for d in items]
+        return {'total': total, 'items': out}
+
+    @router.get('/deposit-requests/{req_id}')
+    async def deposit_request_detail(req_id: str, admin=Depends(require_admin)):
+        d = await db.deposit_requests.find_one({'_id': req_id})
+        if not d: raise HTTPException(404, 'Bulunamadı')
+        base = await _dr_out(d)
+        base['receipt_base64'] = d.get('receipt_base64')
+        return base
+
+    @router.post('/deposit-requests/{req_id}/approve')
+    async def approve_deposit_request(req_id: str, admin=Depends(require_admin)):
+        d = await db.deposit_requests.find_one({'_id': req_id})
+        if not d: raise HTTPException(404, 'Bulunamadı')
+        if d.get('status') != 'pending':
+            raise HTTPException(400, 'Sadece beklemedeki talepler onaylanabilir')
+        amount = float(d['amount'])
+        uid = d['user_id']
+        u = await db.users.find_one({'_id': uid})
+        if not u: raise HTTPException(404, 'Kullanıcı bulunamadı')
+        new_cash = u.get('cash_balance', 0) + amount
+        new_total = u.get('total_deposits', 0) + amount
+        await db.users.update_one({'_id': uid}, {'$set': {'cash_balance': new_cash, 'total_deposits': new_total}})
+        await db.deposit_requests.update_one({'_id': req_id}, {'$set': {
+            'status': 'approved',
+            'reviewed_at': datetime.now(timezone.utc),
+            'reviewed_by': admin['_id'],
+        }})
+        # record as transaction
+        await db.transactions.insert_one({
+            '_id': new_id(), 'user_id': uid,
+            'date': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M'),
+            'type': 'Para Yatırma', 'code': '-', 'units': 0, 'price': 0,
+            'total': amount, 'status': 'Gerçekleşti',
+            'deposit_request_id': req_id,
+        })
+        await _audit(admin['_id'], 'deposit_request.approve', req_id, {'user_id': uid, 'amount': amount})
+        return {'ok': True}
+
+    @router.post('/deposit-requests/{req_id}/reject')
+    async def reject_deposit_request(req_id: str, body: DepositActionIn, admin=Depends(require_admin)):
+        d = await db.deposit_requests.find_one({'_id': req_id})
+        if not d: raise HTTPException(404, 'Bulunamadı')
+        if d.get('status') != 'pending':
+            raise HTTPException(400, 'Sadece beklemedeki talepler reddedilebilir')
+        await db.deposit_requests.update_one({'_id': req_id}, {'$set': {
+            'status': 'rejected',
+            'reviewed_at': datetime.now(timezone.utc),
+            'reviewed_by': admin['_id'],
+            'rejection_reason': body.reason or '',
+        }})
+        await _audit(admin['_id'], 'deposit_request.reject', req_id, {'reason': body.reason})
+        return {'ok': True}
 
     return router
 
