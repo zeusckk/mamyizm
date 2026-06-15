@@ -62,16 +62,16 @@ COMMODITIES = [
 ]
 
 FX_PAIRS = [
-    {'symbol': 'TRY=X', 'name': 'USD / TRY', 'category': 'TL Parite', 'base': 'USD', 'quote': 'TRY'},
-    {'symbol': 'EURTRY=X', 'name': 'EUR / TRY', 'category': 'TL Parite', 'base': 'EUR', 'quote': 'TRY'},
-    {'symbol': 'GBPTRY=X', 'name': 'GBP / TRY', 'category': 'TL Parite', 'base': 'GBP', 'quote': 'TRY'},
-    {'symbol': 'CHFTRY=X', 'name': 'CHF / TRY', 'category': 'TL Parite', 'base': 'CHF', 'quote': 'TRY'},
-    {'symbol': 'JPYTRY=X', 'name': 'JPY / TRY', 'category': 'TL Parite', 'base': 'JPY', 'quote': 'TRY'},
-    {'symbol': 'EURUSD=X', 'name': 'EUR / USD', 'category': 'Çapraz Parite', 'base': 'EUR', 'quote': 'USD'},
-    {'symbol': 'GBPUSD=X', 'name': 'GBP / USD', 'category': 'Çapraz Parite', 'base': 'GBP', 'quote': 'USD'},
-    {'symbol': 'USDJPY=X', 'name': 'USD / JPY', 'category': 'Çapraz Parite', 'base': 'USD', 'quote': 'JPY'},
-    {'symbol': 'AUDUSD=X', 'name': 'AUD / USD', 'category': 'Çapraz Parite', 'base': 'AUD', 'quote': 'USD'},
-    {'symbol': 'USDCNY=X', 'name': 'USD / CNY', 'category': 'Çapraz Parite', 'base': 'USD', 'quote': 'CNY'},
+    {'symbol': 'TRY=X', 'name': 'USD / TRY', 'category': 'TL Parite', 'base': 'USD', 'quote': 'TRY', 'currency': 'TRY'},
+    {'symbol': 'EURTRY=X', 'name': 'EUR / TRY', 'category': 'TL Parite', 'base': 'EUR', 'quote': 'TRY', 'currency': 'TRY'},
+    {'symbol': 'GBPTRY=X', 'name': 'GBP / TRY', 'category': 'TL Parite', 'base': 'GBP', 'quote': 'TRY', 'currency': 'TRY'},
+    {'symbol': 'CHFTRY=X', 'name': 'CHF / TRY', 'category': 'TL Parite', 'base': 'CHF', 'quote': 'TRY', 'currency': 'TRY'},
+    {'symbol': 'JPYTRY=X', 'name': 'JPY / TRY', 'category': 'TL Parite', 'base': 'JPY', 'quote': 'TRY', 'currency': 'TRY'},
+    {'symbol': 'EURUSD=X', 'name': 'EUR / USD', 'category': 'Çapraz Parite', 'base': 'EUR', 'quote': 'USD', 'currency': 'USD'},
+    {'symbol': 'GBPUSD=X', 'name': 'GBP / USD', 'category': 'Çapraz Parite', 'base': 'GBP', 'quote': 'USD', 'currency': 'USD'},
+    {'symbol': 'USDJPY=X', 'name': 'USD / JPY', 'category': 'Çapraz Parite', 'base': 'USD', 'quote': 'JPY', 'currency': 'JPY'},
+    {'symbol': 'AUDUSD=X', 'name': 'AUD / USD', 'category': 'Çapraz Parite', 'base': 'AUD', 'quote': 'USD', 'currency': 'USD'},
+    {'symbol': 'USDCNY=X', 'name': 'USD / CNY', 'category': 'Çapraz Parite', 'base': 'USD', 'quote': 'CNY', 'currency': 'CNY'},
 ]
 
 CRYPTO = [
@@ -87,10 +87,15 @@ CRYPTO = [
     {'symbol': 'MATIC-USD', 'name': 'Polygon', 'category': 'Kripto Para', 'currency': 'USD'},
 ]
 
+# Tradable instruments registry (BIST stocks only — tradable on platform)
+TRADABLE = {
+    s: {'symbol': s, 'name': n, 'category': c, 'currency': 'TRY', 'market': 'BIST'}
+    for (s, n, c) in BIST_STOCKS
+}
 
 # Cache --------------------------------------------------------------------
 _cache: Dict[str, Dict] = {}
-CACHE_TTL_SECONDS = 90  # 90s for list, 300s for series
+CACHE_TTL_SECONDS = 90
 
 
 def _get_cache(key: str, ttl: int = CACHE_TTL_SECONDS) -> Optional[Dict]:
@@ -104,9 +109,7 @@ def _set_cache(key: str, data) -> None:
     _cache[key] = {'data': data, 'ts': time.time()}
 
 
-# Sync fetchers ------------------------------------------------------------
 def _fetch_quotes_sync(symbols: List[str]) -> Dict[str, Dict]:
-    """Fetch quote info for a list of symbols using yf.download (efficient batch)."""
     try:
         data = yf.download(
             tickers=' '.join(symbols),
@@ -121,7 +124,8 @@ def _fetch_quotes_sync(symbols: List[str]) -> Dict[str, Dict]:
     for sym in symbols:
         try:
             if len(symbols) == 1:
-                df = data
+                # Single symbol: data has MultiIndex columns like ('SYMBOL', 'Close')
+                df = data[sym] if sym in data.columns.get_level_values(0) else data
             else:
                 df = data[sym] if sym in data.columns.get_level_values(0) else None
             if df is None or df.empty:
@@ -163,36 +167,30 @@ def _fetch_series_sync(symbol: str, period: str = '1mo') -> List[Dict]:
         return []
 
 
-# Async wrappers -----------------------------------------------------------
 async def _run(fn, *args):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(_executor, fn, *args)
 
 
 async def get_market_group(group: str) -> List[Dict]:
-    """group in: indices, stocks, commodities, fx, crypto"""
     cached = _get_cache(group)
     if cached is not None:
         return cached
 
     if group == 'indices':
         meta = INDICES
-        symbols = [m['symbol'] for m in meta]
     elif group == 'stocks':
-        meta = [{'symbol': s, 'name': n, 'category': c, 'currency': 'TRY'} for (s, n, c) in BIST_STOCKS]
-        symbols = [m['symbol'] for m in meta]
+        meta = [{'symbol': s, 'name': n, 'category': c, 'currency': 'TRY', 'market': 'BIST'} for (s, n, c) in BIST_STOCKS]
     elif group == 'commodities':
         meta = COMMODITIES
-        symbols = [m['symbol'] for m in meta]
     elif group == 'fx':
         meta = FX_PAIRS
-        symbols = [m['symbol'] for m in meta]
     elif group == 'crypto':
         meta = CRYPTO
-        symbols = [m['symbol'] for m in meta]
     else:
         return []
 
+    symbols = [m['symbol'] for m in meta]
     quotes = await _run(_fetch_quotes_sync, symbols)
     items = []
     for m in meta:
@@ -211,13 +209,11 @@ async def get_market_group(group: str) -> List[Dict]:
 
 
 async def get_symbol_detail(symbol: str) -> Optional[Dict]:
-    """Return detail with metadata + series."""
     cache_key = f'detail:{symbol}'
     cached = _get_cache(cache_key, ttl=300)
     if cached is not None:
         return cached
 
-    # find metadata
     meta = None
     for m in INDICES + COMMODITIES + FX_PAIRS + CRYPTO:
         if m['symbol'] == symbol:
@@ -225,7 +221,7 @@ async def get_symbol_detail(symbol: str) -> Optional[Dict]:
     if not meta:
         for (s, n, c) in BIST_STOCKS:
             if s == symbol:
-                meta = {'symbol': s, 'name': n, 'category': c, 'currency': 'TRY'}
+                meta = {'symbol': s, 'name': n, 'category': c, 'currency': 'TRY', 'market': 'BIST'}
                 break
     if not meta:
         meta = {'symbol': symbol, 'name': symbol, 'category': 'Diğer', 'currency': 'USD'}
@@ -247,3 +243,28 @@ async def get_symbol_detail(symbol: str) -> Optional[Dict]:
     }
     _set_cache(cache_key, out)
     return out
+
+
+async def get_tradable_instrument(symbol: str) -> Optional[Dict]:
+    """Return current live price + metadata for a BIST-tradable stock."""
+    meta = TRADABLE.get(symbol)
+    if not meta:
+        return None
+    cache_key = f'instr:{symbol}'
+    cached = _get_cache(cache_key, ttl=60)
+    if cached is not None:
+        return cached
+    quotes = await _run(_fetch_quotes_sync, [symbol])
+    q = quotes.get(symbol, {})
+    out = {**meta, 'price': q.get('price', 0), 'change_pct': q.get('change_pct', 0)}
+    if out['price']:
+        _set_cache(cache_key, out)
+    return out
+
+
+async def get_prices_for_symbols(symbols: List[str]) -> Dict[str, float]:
+    """Batch fetch live prices, useful for portfolio."""
+    if not symbols:
+        return {}
+    quotes = await _run(_fetch_quotes_sync, symbols)
+    return {s: (quotes.get(s, {}).get('price') or 0) for s in symbols}

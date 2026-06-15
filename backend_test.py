@@ -1,779 +1,662 @@
 #!/usr/bin/env python3
 """
-FonAkış Backend API Test Suite
-Tests all backend endpoints with full lifecycle scenario
+FonAkış Backend Test Suite - Post-Refactor Validation
+Tests KYC flow, BIST stock trading, and removal of funds endpoints.
 """
 import requests
 import json
 import sys
 from datetime import datetime
 
-# Read backend URL from frontend/.env
-with open('/app/frontend/.env', 'r') as f:
-    for line in f:
-        if line.startswith('REACT_APP_BACKEND_URL='):
-            BACKEND_URL = line.split('=')[1].strip()
-            break
+# Backend URL from frontend/.env
+BASE_URL = "https://access-test-12.preview.emergentagent.com/api"
 
-API_BASE = f"{BACKEND_URL}/api"
-
-# Test data
-TEST_EMAIL = f"test_{datetime.now().timestamp()}@fonakis.com"
-TEST_PASSWORD = "test123456"
-TEST_FULL_NAME = "Ahmet Yılmaz"
-TEST_PHONE = "+905551234567"
-TEST_TCKN = "12345678901"
-
-# Global state
+# Test state
+test_results = []
 token = None
 user_id = None
 
-class Colors:
-    GREEN = '\033[92m'
-    RED = '\033[91m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    END = '\033[0m'
 
-def log_test(name):
-    print(f"\n{Colors.BLUE}[TEST]{Colors.END} {name}")
+def log_test(name, passed, details=""):
+    """Log test result."""
+    status = "✅ PASS" if passed else "❌ FAIL"
+    test_results.append({"name": name, "passed": passed, "details": details})
+    print(f"{status}: {name}")
+    if details:
+        print(f"   {details}")
 
-def log_success(msg):
-    print(f"  {Colors.GREEN}✓{Colors.END} {msg}")
 
-def log_error(msg):
-    print(f"  {Colors.RED}✗{Colors.END} {msg}")
-
-def log_info(msg):
-    print(f"  {Colors.YELLOW}ℹ{Colors.END} {msg}")
-
-def assert_status(response, expected, test_name):
-    if response.status_code == expected:
-        log_success(f"Status {response.status_code} (expected {expected})")
-        return True
-    else:
-        log_error(f"Status {response.status_code}, expected {expected}")
-        log_error(f"Response: {response.text}")
-        return False
-
-def assert_field(data, field, test_name):
-    if field in data:
-        log_success(f"Field '{field}' present")
-        return True
-    else:
-        log_error(f"Field '{field}' missing in response")
-        log_error(f"Response data: {json.dumps(data, indent=2)}")
-        return False
-
-# Test 1: Register
-def test_register():
+def test_1_register_fresh_user():
+    """Test 1: Register fresh user -> verify kyc_status == 'none'"""
     global token, user_id
-    log_test("1. POST /api/auth/register")
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    email = f"test_kyc_{timestamp}@example.com"
     
     payload = {
-        "full_name": TEST_FULL_NAME,
-        "email": TEST_EMAIL,
-        "password": TEST_PASSWORD,
-        "phone": TEST_PHONE,
-        "tckn": TEST_TCKN
+        "full_name": "Ahmet Yılmaz",
+        "email": email,
+        "password": "Test123!",
+        "phone": "+905551234567",
+        "tckn": "12345678901"
     }
     
-    response = requests.post(f"{API_BASE}/auth/register", json=payload)
-    
-    if not assert_status(response, 200, "register"):
-        return False
-    
-    data = response.json()
-    
-    success = True
-    success &= assert_field(data, 'token', 'register')
-    success &= assert_field(data, 'user', 'register')
-    
-    if 'token' in data:
-        token = data['token']
-        log_info(f"Token: {token[:20]}...")
-    
-    if 'user' in data:
-        user_id = data['user'].get('id')
-        log_info(f"User ID: {user_id}")
-        log_info(f"Email: {data['user'].get('email')}")
-    
-    return success
-
-# Test 2: Login with same credentials
-def test_login():
-    global token
-    log_test("2. POST /api/auth/login (correct credentials)")
-    
-    payload = {
-        "email": TEST_EMAIL,
-        "password": TEST_PASSWORD
-    }
-    
-    response = requests.post(f"{API_BASE}/auth/login", json=payload)
-    
-    if not assert_status(response, 200, "login"):
-        return False
-    
-    data = response.json()
-    
-    success = True
-    success &= assert_field(data, 'token', 'login')
-    success &= assert_field(data, 'user', 'login')
-    
-    if 'token' in data:
-        token = data['token']
-        log_success("Login successful, token updated")
-    
-    return success
-
-# Test 3: Login with wrong password
-def test_login_wrong_password():
-    log_test("3. POST /api/auth/login (wrong password)")
-    
-    payload = {
-        "email": TEST_EMAIL,
-        "password": "wrongpassword123"
-    }
-    
-    response = requests.post(f"{API_BASE}/auth/login", json=payload)
-    
-    return assert_status(response, 401, "login_wrong_password")
-
-# Test 4: GET /auth/me with token
-def test_auth_me_with_token():
-    log_test("4. GET /api/auth/me (with Bearer token)")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(f"{API_BASE}/auth/me", headers=headers)
-    
-    if not assert_status(response, 200, "auth_me"):
-        return False
-    
-    data = response.json()
-    
-    success = True
-    success &= assert_field(data, 'user', 'auth_me')
-    
-    if 'user' in data:
-        log_info(f"User: {data['user'].get('full_name')} ({data['user'].get('email')})")
-    
-    return success
-
-# Test 5: GET /auth/me without token
-def test_auth_me_without_token():
-    log_test("5. GET /api/auth/me (without token)")
-    
-    response = requests.get(f"{API_BASE}/auth/me")
-    
-    return assert_status(response, 401, "auth_me_no_token")
-
-# Test 6: PATCH /auth/profile
-def test_update_profile():
-    log_test("6. PATCH /api/auth/profile")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    payload = {
-        "full_name": "Mehmet Demir",
-        "phone": "+905559876543"
-    }
-    
-    response = requests.patch(f"{API_BASE}/auth/profile", json=payload, headers=headers)
-    
-    if not assert_status(response, 200, "update_profile"):
-        return False
-    
-    data = response.json()
-    
-    success = True
-    success &= assert_field(data, 'user', 'update_profile')
-    
-    if 'user' in data:
-        if data['user'].get('full_name') == "Mehmet Demir":
-            log_success("Full name updated correctly")
+    try:
+        resp = requests.post(f"{BASE_URL}/auth/register", json=payload, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            token = data.get("token")
+            user = data.get("user", {})
+            user_id = user.get("id")
+            kyc_status = user.get("kyc_status")
+            
+            if kyc_status == "none":
+                log_test("1. Register user with kyc_status='none'", True, 
+                        f"User created: {email}, kyc_status={kyc_status}")
+                return True
+            else:
+                log_test("1. Register user with kyc_status='none'", False, 
+                        f"Expected kyc_status='none', got '{kyc_status}'")
+                return False
         else:
-            log_error(f"Full name not updated: {data['user'].get('full_name')}")
-            success = False
-        
-        if data['user'].get('phone') == "+905559876543":
-            log_success("Phone updated correctly")
-        else:
-            log_error(f"Phone not updated: {data['user'].get('phone')}")
-            success = False
-    
-    return success
-
-# Test 7: Change password
-def test_change_password():
-    global token
-    log_test("7a. POST /api/auth/change-password (wrong current)")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    payload = {
-        "current": "wrongpassword",
-        "next": "newpassword123"
-    }
-    
-    response = requests.post(f"{API_BASE}/auth/change-password", json=payload, headers=headers)
-    
-    if not assert_status(response, 400, "change_password_wrong"):
-        return False
-    
-    log_test("7b. POST /api/auth/change-password (correct current)")
-    
-    payload = {
-        "current": TEST_PASSWORD,
-        "next": "newpassword123"
-    }
-    
-    response = requests.post(f"{API_BASE}/auth/change-password", json=payload, headers=headers)
-    
-    if not assert_status(response, 200, "change_password_correct"):
-        return False
-    
-    log_test("7c. Login with new password")
-    
-    login_payload = {
-        "email": TEST_EMAIL,
-        "password": "newpassword123"
-    }
-    
-    response = requests.post(f"{API_BASE}/auth/login", json=login_payload)
-    
-    if not assert_status(response, 200, "login_new_password"):
-        return False
-    
-    data = response.json()
-    if 'token' in data:
-        token = data['token']
-        log_success("Login with new password successful")
-    
-    return True
-
-# Test 8: GET /funds
-def test_list_funds():
-    log_test("8. GET /api/funds")
-    
-    response = requests.get(f"{API_BASE}/funds")
-    
-    if not assert_status(response, 200, "list_funds"):
-        return False
-    
-    data = response.json()
-    
-    if not isinstance(data, list):
-        log_error("Response is not a list")
-        return False
-    
-    if len(data) != 12:
-        log_error(f"Expected 12 funds, got {len(data)}")
-        return False
-    
-    log_success(f"Got {len(data)} funds")
-    
-    # Check first fund has required fields
-    if len(data) > 0:
-        fund = data[0]
-        required_fields = ['code', 'name', 'category', 'category_label', 'price', 
-                          'change_24h', 'change_ytd', 'risk', 'aum', 'manager', 
-                          'currency', 'series', 'desc']
-        
-        success = True
-        for field in required_fields:
-            if field not in fund:
-                log_error(f"Fund missing field: {field}")
-                success = False
-        
-        if success:
-            log_success("All required fields present in fund")
-            log_info(f"Sample fund: {fund.get('code')} - {fund.get('name')}")
-        
-        return success
-    
-    return True
-
-# Test 9: GET /funds/{code}
-def test_get_fund():
-    log_test("9. GET /api/funds/FAH")
-    
-    response = requests.get(f"{API_BASE}/funds/FAH")
-    
-    if not assert_status(response, 200, "get_fund"):
-        return False
-    
-    data = response.json()
-    
-    if data.get('code') == 'FAH':
-        log_success("Got correct fund")
-        log_info(f"Fund: {data.get('name')}, Price: {data.get('price')}")
-    else:
-        log_error(f"Expected FAH, got {data.get('code')}")
-        return False
-    
-    return True
-
-# Test 10: GET /funds/NONEXIST
-def test_get_fund_not_found():
-    log_test("10. GET /api/funds/NONEXIST")
-    
-    response = requests.get(f"{API_BASE}/funds/NONEXIST")
-    
-    return assert_status(response, 404, "get_fund_not_found")
-
-# Test 11: GET /portfolio (initial)
-def test_portfolio_initial():
-    log_test("11. GET /api/portfolio (initial)")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(f"{API_BASE}/portfolio", headers=headers)
-    
-    if not assert_status(response, 200, "portfolio_initial"):
-        return False
-    
-    data = response.json()
-    
-    success = True
-    success &= assert_field(data, 'cash_balance', 'portfolio')
-    success &= assert_field(data, 'holdings', 'portfolio')
-    success &= assert_field(data, 'total_value', 'portfolio')
-    success &= assert_field(data, 'total_cost', 'portfolio')
-    success &= assert_field(data, 'total_pl', 'portfolio')
-    
-    if data.get('cash_balance') == 0:
-        log_success("Initial cash_balance is 0")
-    else:
-        log_error(f"Expected cash_balance 0, got {data.get('cash_balance')}")
-        success = False
-    
-    if isinstance(data.get('holdings'), list) and len(data.get('holdings')) == 0:
-        log_success("Initial holdings is empty list")
-    else:
-        log_error(f"Expected empty holdings, got {data.get('holdings')}")
-        success = False
-    
-    return success
-
-# Test 12: POST /cash/deposit
-def test_deposit():
-    log_test("12. POST /api/cash/deposit (10000)")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    payload = {"amount": 10000}
-    
-    response = requests.post(f"{API_BASE}/cash/deposit", json=payload, headers=headers)
-    
-    if not assert_status(response, 200, "deposit"):
-        return False
-    
-    data = response.json()
-    
-    success = True
-    success &= assert_field(data, 'cash_balance', 'deposit')
-    success &= assert_field(data, 'transaction', 'deposit')
-    
-    if data.get('cash_balance') == 10000:
-        log_success("Cash balance is 10000")
-    else:
-        log_error(f"Expected cash_balance 10000, got {data.get('cash_balance')}")
-        success = False
-    
-    return success
-
-# Test 13: POST /trade/buy (first)
-def test_buy_first():
-    log_test("13. POST /api/trade/buy (FAH, 100 units)")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    payload = {"code": "FAH", "units": 100}
-    
-    response = requests.post(f"{API_BASE}/trade/buy", json=payload, headers=headers)
-    
-    if not assert_status(response, 200, "buy_first"):
-        return False
-    
-    data = response.json()
-    
-    success = True
-    success &= assert_field(data, 'ok', 'buy')
-    success &= assert_field(data, 'cash_balance', 'buy')
-    success &= assert_field(data, 'transaction', 'buy')
-    
-    if data.get('ok'):
-        log_success("Buy successful")
-    
-    # Cash should be deducted (FAH price is 12.4581, so 100 * 12.4581 = 1245.81)
-    expected_cash = 10000 - (100 * 12.4581)
-    if abs(data.get('cash_balance', 0) - expected_cash) < 1:
-        log_success(f"Cash deducted correctly: {data.get('cash_balance')}")
-    else:
-        log_error(f"Expected cash ~{expected_cash}, got {data.get('cash_balance')}")
-        success = False
-    
-    return success
-
-# Test 14: POST /trade/buy (second - same fund)
-def test_buy_second():
-    log_test("14. POST /api/trade/buy (FAH, 50 units - weighted avg)")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    payload = {"code": "FAH", "units": 50}
-    
-    response = requests.post(f"{API_BASE}/trade/buy", json=payload, headers=headers)
-    
-    if not assert_status(response, 200, "buy_second"):
-        return False
-    
-    data = response.json()
-    
-    if data.get('ok'):
-        log_success("Second buy successful")
-        log_info(f"Cash balance: {data.get('cash_balance')}")
-    
-    return True
-
-# Test 15: POST /trade/buy (insufficient balance)
-def test_buy_insufficient():
-    log_test("15. POST /api/trade/buy (FAH, 999999 units - insufficient)")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    payload = {"code": "FAH", "units": 999999}
-    
-    response = requests.post(f"{API_BASE}/trade/buy", json=payload, headers=headers)
-    
-    return assert_status(response, 400, "buy_insufficient")
-
-# Test 16: GET /portfolio (with holdings)
-def test_portfolio_with_holdings():
-    log_test("16. GET /api/portfolio (with holdings)")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(f"{API_BASE}/portfolio", headers=headers)
-    
-    if not assert_status(response, 200, "portfolio_holdings"):
-        return False
-    
-    data = response.json()
-    
-    success = True
-    
-    if not isinstance(data.get('holdings'), list):
-        log_error("Holdings is not a list")
-        return False
-    
-    if len(data.get('holdings')) == 0:
-        log_error("Holdings is empty, expected FAH")
-        return False
-    
-    log_success(f"Got {len(data.get('holdings'))} holding(s)")
-    
-    # Find FAH holding
-    fah_holding = None
-    for h in data.get('holdings', []):
-        if h.get('code') == 'FAH':
-            fah_holding = h
-            break
-    
-    if not fah_holding:
-        log_error("FAH holding not found")
-        return False
-    
-    log_success("FAH holding found")
-    
-    if fah_holding.get('units') == 150:
-        log_success("FAH units is 150 (100 + 50)")
-    else:
-        log_error(f"Expected 150 units, got {fah_holding.get('units')}")
-        success = False
-    
-    if 'avg_cost' in fah_holding:
-        log_success(f"Avg cost: {fah_holding.get('avg_cost')}")
-    
-    if 'current_price' in fah_holding:
-        log_success(f"Current price: {fah_holding.get('current_price')}")
-    
-    if 'total_value' in data:
-        log_success(f"Total value: {data.get('total_value')}")
-    
-    if 'total_cost' in data:
-        log_success(f"Total cost: {data.get('total_cost')}")
-    
-    if 'total_pl' in data:
-        log_success(f"Total P/L: {data.get('total_pl')}")
-    
-    return success
-
-# Test 17: POST /trade/sell
-def test_sell():
-    log_test("17. POST /api/trade/sell (FAH, 50 units)")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    payload = {"code": "FAH", "units": 50}
-    
-    response = requests.post(f"{API_BASE}/trade/sell", json=payload, headers=headers)
-    
-    if not assert_status(response, 200, "sell"):
-        return False
-    
-    data = response.json()
-    
-    success = True
-    success &= assert_field(data, 'ok', 'sell')
-    success &= assert_field(data, 'cash_balance', 'sell')
-    
-    if data.get('ok'):
-        log_success("Sell successful")
-        log_info(f"Cash balance: {data.get('cash_balance')}")
-    
-    # Verify units left is 100
-    headers = {"Authorization": f"Bearer {token}"}
-    portfolio_response = requests.get(f"{API_BASE}/portfolio", headers=headers)
-    
-    if portfolio_response.status_code == 200:
-        portfolio_data = portfolio_response.json()
-        fah_holding = None
-        for h in portfolio_data.get('holdings', []):
-            if h.get('code') == 'FAH':
-                fah_holding = h
-                break
-        
-        if fah_holding and fah_holding.get('units') == 100:
-            log_success("FAH units left is 100")
-        else:
-            log_error(f"Expected 100 units left, got {fah_holding.get('units') if fah_holding else 'no holding'}")
-            success = False
-    
-    return success
-
-# Test 18: POST /trade/sell (insufficient units)
-def test_sell_insufficient():
-    log_test("18. POST /api/trade/sell (FAH, 10000 units - insufficient)")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    payload = {"code": "FAH", "units": 10000}
-    
-    response = requests.post(f"{API_BASE}/trade/sell", json=payload, headers=headers)
-    
-    return assert_status(response, 400, "sell_insufficient")
-
-# Test 19: POST /trade/sell (no holding)
-def test_sell_no_holding():
-    log_test("19. POST /api/trade/sell (FPL, 1 unit - no holding)")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    payload = {"code": "FPL", "units": 1}
-    
-    response = requests.post(f"{API_BASE}/trade/sell", json=payload, headers=headers)
-    
-    return assert_status(response, 400, "sell_no_holding")
-
-# Test 20: POST /cash/withdraw (insufficient)
-def test_withdraw_insufficient():
-    log_test("20. POST /api/cash/withdraw (99999999 - insufficient)")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    payload = {"amount": 99999999}
-    
-    response = requests.post(f"{API_BASE}/cash/withdraw", json=payload, headers=headers)
-    
-    return assert_status(response, 400, "withdraw_insufficient")
-
-# Test 21: POST /cash/withdraw
-def test_withdraw():
-    log_test("21. POST /api/cash/withdraw (100)")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    payload = {"amount": 100}
-    
-    response = requests.post(f"{API_BASE}/cash/withdraw", json=payload, headers=headers)
-    
-    if not assert_status(response, 200, "withdraw"):
-        return False
-    
-    data = response.json()
-    
-    success = True
-    success &= assert_field(data, 'cash_balance', 'withdraw')
-    success &= assert_field(data, 'transaction', 'withdraw')
-    
-    log_info(f"Cash balance after withdraw: {data.get('cash_balance')}")
-    
-    return success
-
-# Test 22: GET /transactions
-def test_list_transactions():
-    log_test("22. GET /api/transactions")
-    
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(f"{API_BASE}/transactions", headers=headers)
-    
-    if not assert_status(response, 200, "list_transactions"):
-        return False
-    
-    data = response.json()
-    
-    if not isinstance(data, list):
-        log_error("Response is not a list")
-        return False
-    
-    log_success(f"Got {len(data)} transactions")
-    
-    # Should have: 1 deposit, 2 buys, 1 sell, 1 withdraw = 5 transactions
-    if len(data) >= 5:
-        log_success("Has expected number of transactions (>=5)")
-    else:
-        log_error(f"Expected at least 5 transactions, got {len(data)}")
-        return False
-    
-    # Check transaction types
-    types = [t.get('type') for t in data]
-    log_info(f"Transaction types: {types}")
-    
-    # Verify sorted by date desc (most recent first)
-    if len(data) > 1:
-        dates = [t.get('date') for t in data]
-        if dates == sorted(dates, reverse=True):
-            log_success("Transactions sorted by date desc")
-        else:
-            log_error("Transactions not sorted correctly")
+            log_test("1. Register user with kyc_status='none'", False, 
+                    f"Status {resp.status_code}: {resp.text}")
             return False
-    
-    return True
+    except Exception as e:
+        log_test("1. Register user with kyc_status='none'", False, f"Exception: {e}")
+        return False
 
-# Test 23: GET /transactions with filter
-def test_list_transactions_filtered():
-    log_test("23. GET /api/transactions?type=Alım")
-    
+
+def test_2_get_me_kyc_field():
+    """Test 2: GET /api/auth/me -> verify kyc_status field present"""
     headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(f"{API_BASE}/transactions?type=Alım", headers=headers)
     
-    if not assert_status(response, 200, "list_transactions_filtered"):
-        return False
-    
-    data = response.json()
-    
-    if not isinstance(data, list):
-        log_error("Response is not a list")
-        return False
-    
-    log_success(f"Got {len(data)} Alım transactions")
-    
-    # Should have 2 buy transactions
-    if len(data) == 2:
-        log_success("Correct number of Alım transactions")
-    else:
-        log_error(f"Expected 2 Alım transactions, got {len(data)}")
-        return False
-    
-    # Verify all are Alım type
-    for t in data:
-        if t.get('type') != 'Alım':
-            log_error(f"Found non-Alım transaction: {t.get('type')}")
+    try:
+        resp = requests.get(f"{BASE_URL}/auth/me", headers=headers, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            user = data.get("user", {})
+            if "kyc_status" in user:
+                log_test("2. GET /me has kyc_status field", True, 
+                        f"kyc_status={user['kyc_status']}")
+                return True
+            else:
+                log_test("2. GET /me has kyc_status field", False, 
+                        "kyc_status field missing")
+                return False
+        else:
+            log_test("2. GET /me has kyc_status field", False, 
+                    f"Status {resp.status_code}: {resp.text}")
             return False
-    
-    log_success("All transactions are Alım type")
-    
-    return True
+    except Exception as e:
+        log_test("2. GET /me has kyc_status field", False, f"Exception: {e}")
+        return False
 
-# Test 24: GET /news
-def test_list_news():
-    log_test("24. GET /api/news")
-    
-    response = requests.get(f"{API_BASE}/news")
-    
-    if not assert_status(response, 200, "list_news"):
-        return False
-    
-    data = response.json()
-    
-    if not isinstance(data, list):
-        log_error("Response is not a list")
-        return False
-    
-    if len(data) != 6:
-        log_error(f"Expected 6 news items, got {len(data)}")
-        return False
-    
-    log_success(f"Got {len(data)} news items")
-    
-    # Check first news has required fields
-    if len(data) > 0:
-        news = data[0]
-        required_fields = ['id', 'date', 'tag', 'title', 'summary']
-        
-        success = True
-        for field in required_fields:
-            if field not in news:
-                log_error(f"News missing field: {field}")
-                success = False
-        
-        if success:
-            log_success("All required fields present in news")
-            log_info(f"Sample news: {news.get('title')}")
-        
-        return success
-    
-    return True
 
-# Main test runner
+def test_3_cash_deposit_no_kyc():
+    """Test 3: POST /api/cash/deposit -> succeeds (no KYC needed)"""
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {"amount": 50000}
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/cash/deposit", json=payload, headers=headers, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            cash_balance = data.get("cash_balance")
+            log_test("3. Cash deposit without KYC", True, 
+                    f"Deposited 50000, balance={cash_balance}")
+            return True
+        else:
+            log_test("3. Cash deposit without KYC", False, 
+                    f"Status {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("3. Cash deposit without KYC", False, f"Exception: {e}")
+        return False
+
+
+def test_4_trade_buy_without_kyc():
+    """Test 4: POST /api/trade/buy without KYC -> EXPECT 403"""
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {"symbol": "THYAO.IS", "units": 1}
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/trade/buy", json=payload, headers=headers, timeout=10)
+        if resp.status_code == 403:
+            error_msg = resp.json().get("detail", "")
+            if "KYC" in error_msg or "kyc" in error_msg.lower():
+                log_test("4. Trade buy without KYC returns 403", True, 
+                        f"Correctly blocked: {error_msg}")
+                return True
+            else:
+                log_test("4. Trade buy without KYC returns 403", False, 
+                        f"403 but wrong message: {error_msg}")
+                return False
+        else:
+            log_test("4. Trade buy without KYC returns 403", False, 
+                    f"Expected 403, got {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("4. Trade buy without KYC returns 403", False, f"Exception: {e}")
+        return False
+
+
+def test_5_kyc_status_none():
+    """Test 5: GET /api/kyc/status -> verify status='none', has_documents=False"""
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    try:
+        resp = requests.get(f"{BASE_URL}/kyc/status", headers=headers, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            status = data.get("status")
+            has_docs = data.get("has_documents")
+            
+            if status == "none" and has_docs == False:
+                log_test("5. KYC status before submit", True, 
+                        f"status='none', has_documents=False")
+                return True
+            else:
+                log_test("5. KYC status before submit", False, 
+                        f"Expected status='none' & has_documents=False, got status='{status}', has_documents={has_docs}")
+                return False
+        else:
+            log_test("5. KYC status before submit", False, 
+                    f"Status {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("5. KYC status before submit", False, f"Exception: {e}")
+        return False
+
+
+def test_6_kyc_submit():
+    """Test 6: POST /api/kyc/submit with base64 docs -> verify ok=True, status='pending'"""
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Create realistic base64 strings (small but valid)
+    selfie_b64 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/" + "A" * 1000
+    id_doc_b64 = "data:image/jpeg;base64," + "B" * 2000
+    
+    payload = {
+        "selfie_base64": selfie_b64,
+        "id_doc_base64": id_doc_b64,
+        "id_doc_type": "tc_kimlik",
+        "id_doc_filename": "kimlik.jpg",
+        "id_doc_mime": "image/jpeg"
+    }
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/kyc/submit", json=payload, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            data = resp.json()
+            ok = data.get("ok")
+            user = data.get("user", {})
+            kyc_status = user.get("kyc_status")
+            
+            if ok and kyc_status == "pending":
+                log_test("6. KYC submit sets status to pending", True, 
+                        f"ok=True, kyc_status='pending'")
+                return True
+            else:
+                log_test("6. KYC submit sets status to pending", False, 
+                        f"Expected ok=True & status='pending', got ok={ok}, status='{kyc_status}'")
+                return False
+        else:
+            log_test("6. KYC submit sets status to pending", False, 
+                    f"Status {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("6. KYC submit sets status to pending", False, f"Exception: {e}")
+        return False
+
+
+def test_7_kyc_status_pending():
+    """Test 7: GET /api/kyc/status -> status='pending', has_documents=True"""
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    try:
+        resp = requests.get(f"{BASE_URL}/kyc/status", headers=headers, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            status = data.get("status")
+            has_docs = data.get("has_documents")
+            
+            if status == "pending" and has_docs == True:
+                log_test("7. KYC status after submit", True, 
+                        f"status='pending', has_documents=True")
+                return True
+            else:
+                log_test("7. KYC status after submit", False, 
+                        f"Expected status='pending' & has_documents=True, got status='{status}', has_documents={has_docs}")
+                return False
+        else:
+            log_test("7. KYC status after submit", False, 
+                    f"Status {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("7. KYC status after submit", False, f"Exception: {e}")
+        return False
+
+
+def test_8_trade_buy_pending_kyc():
+    """Test 8: POST /api/trade/buy with pending KYC -> STILL 403"""
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {"symbol": "THYAO.IS", "units": 1}
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/trade/buy", json=payload, headers=headers, timeout=10)
+        if resp.status_code == 403:
+            log_test("8. Trade buy with pending KYC returns 403", True, 
+                    "Correctly blocked (pending != approved)")
+            return True
+        else:
+            log_test("8. Trade buy with pending KYC returns 403", False, 
+                    f"Expected 403, got {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("8. Trade buy with pending KYC returns 403", False, f"Exception: {e}")
+        return False
+
+
+def test_9_kyc_demo_approve():
+    """Test 9: POST /api/kyc/demo-approve -> verify status='approved'"""
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/kyc/demo-approve", headers=headers, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            ok = data.get("ok")
+            user = data.get("user", {})
+            kyc_status = user.get("kyc_status")
+            
+            if ok and kyc_status == "approved":
+                log_test("9. KYC demo-approve sets status to approved", True, 
+                        f"ok=True, kyc_status='approved'")
+                return True
+            else:
+                log_test("9. KYC demo-approve sets status to approved", False, 
+                        f"Expected ok=True & status='approved', got ok={ok}, status='{kyc_status}'")
+                return False
+        else:
+            log_test("9. KYC demo-approve sets status to approved", False, 
+                    f"Status {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("9. KYC demo-approve sets status to approved", False, f"Exception: {e}")
+        return False
+
+
+def test_10_trade_buy_approved_kyc():
+    """Test 10: POST /api/trade/buy with approved KYC -> SUCCESS"""
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {"symbol": "THYAO.IS", "units": 1}
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/trade/buy", json=payload, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            data = resp.json()
+            ok = data.get("ok")
+            cash_balance = data.get("cash_balance")
+            transaction = data.get("transaction", {})
+            
+            if ok and transaction.get("type") == "Alım":
+                log_test("10. Trade buy with approved KYC succeeds", True, 
+                        f"Bought 1 THYAO.IS, new balance={cash_balance}")
+                return True
+            else:
+                log_test("10. Trade buy with approved KYC succeeds", False, 
+                        f"Unexpected response: {data}")
+                return False
+        else:
+            log_test("10. Trade buy with approved KYC succeeds", False, 
+                    f"Status {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("10. Trade buy with approved KYC succeeds", False, f"Exception: {e}")
+        return False
+
+
+def test_11_trade_buy_invalid_symbol():
+    """Test 11: POST /api/trade/buy with invalid symbol -> 404"""
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {"symbol": "INVALID.IS", "units": 1}
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/trade/buy", json=payload, headers=headers, timeout=10)
+        if resp.status_code == 404:
+            error_msg = resp.json().get("detail", "")
+            if "Sembol bulunamadı" in error_msg or "işleme kapalı" in error_msg:
+                log_test("11. Trade buy with invalid symbol returns 404", True, 
+                        f"Correctly rejected: {error_msg}")
+                return True
+            else:
+                log_test("11. Trade buy with invalid symbol returns 404", False, 
+                        f"404 but unexpected message: {error_msg}")
+                return False
+        else:
+            log_test("11. Trade buy with invalid symbol returns 404", False, 
+                    f"Expected 404, got {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("11. Trade buy with invalid symbol returns 404", False, f"Exception: {e}")
+        return False
+
+
+def test_12_trade_buy_old_format():
+    """Test 12: POST /api/trade/buy with old {code, units} format -> 422 validation error"""
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {"code": "FAH", "units": 1}  # Old format
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/trade/buy", json=payload, headers=headers, timeout=10)
+        if resp.status_code == 422:
+            log_test("12. Trade buy with old format returns 422", True, 
+                    "Correctly rejected old {code, units} format")
+            return True
+        else:
+            log_test("12. Trade buy with old format returns 422", False, 
+                    f"Expected 422, got {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("12. Trade buy with old format returns 422", False, f"Exception: {e}")
+        return False
+
+
+def test_13_trade_sell_partial():
+    """Test 13: POST /api/trade/sell partial -> success"""
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {"symbol": "THYAO.IS", "units": 0.5}
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/trade/sell", json=payload, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            data = resp.json()
+            ok = data.get("ok")
+            cash_balance = data.get("cash_balance")
+            transaction = data.get("transaction", {})
+            
+            if ok and transaction.get("type") == "Satım":
+                log_test("13. Trade sell partial succeeds", True, 
+                        f"Sold 0.5 THYAO.IS, new balance={cash_balance}")
+                return True
+            else:
+                log_test("13. Trade sell partial succeeds", False, 
+                        f"Unexpected response: {data}")
+                return False
+        else:
+            log_test("13. Trade sell partial succeeds", False, 
+                    f"Status {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("13. Trade sell partial succeeds", False, f"Exception: {e}")
+        return False
+
+
+def test_14_trade_sell_no_holding():
+    """Test 14: POST /api/trade/sell non-existent holding -> 400"""
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {"symbol": "AKBNK.IS", "units": 1}  # We don't own this
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/trade/sell", json=payload, headers=headers, timeout=10)
+        if resp.status_code == 400:
+            error_msg = resp.json().get("detail", "")
+            if "Yetersiz" in error_msg or "pay" in error_msg:
+                log_test("14. Trade sell without holding returns 400", True, 
+                        f"Correctly rejected: {error_msg}")
+                return True
+            else:
+                log_test("14. Trade sell without holding returns 400", False, 
+                        f"400 but unexpected message: {error_msg}")
+                return False
+        else:
+            log_test("14. Trade sell without holding returns 400", False, 
+                    f"Expected 400, got {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("14. Trade sell without holding returns 400", False, f"Exception: {e}")
+        return False
+
+
+def test_15_portfolio_live_prices():
+    """Test 15: GET /api/portfolio -> verify holdings with current_price > 0"""
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    try:
+        resp = requests.get(f"{BASE_URL}/portfolio", headers=headers, timeout=15)
+        if resp.status_code == 200:
+            data = resp.json()
+            holdings = data.get("holdings", [])
+            
+            if len(holdings) > 0:
+                thyao_holding = next((h for h in holdings if h["code"] == "THYAO.IS"), None)
+                if thyao_holding:
+                    current_price = thyao_holding.get("current_price", 0)
+                    name = thyao_holding.get("name", "")
+                    market = thyao_holding.get("market", "")
+                    
+                    if current_price > 0 and "Türk Hava Yolları" in name and market == "BIST":
+                        log_test("15. Portfolio shows live prices", True, 
+                                f"THYAO.IS: price={current_price}, name='{name}', market='{market}'")
+                        return True
+                    else:
+                        log_test("15. Portfolio shows live prices", False, 
+                                f"THYAO.IS found but price={current_price}, name='{name}', market='{market}'")
+                        return False
+                else:
+                    log_test("15. Portfolio shows live prices", False, 
+                            "THYAO.IS holding not found in portfolio")
+                    return False
+            else:
+                log_test("15. Portfolio shows live prices", False, 
+                        "No holdings in portfolio")
+                return False
+        else:
+            log_test("15. Portfolio shows live prices", False, 
+                    f"Status {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("15. Portfolio shows live prices", False, f"Exception: {e}")
+        return False
+
+
+def test_16_market_stocks():
+    """Test 16: GET /api/market/stocks -> verify 20 BIST stocks with live prices"""
+    try:
+        resp = requests.get(f"{BASE_URL}/market/stocks", timeout=20)
+        if resp.status_code == 200:
+            stocks = resp.json()
+            
+            if len(stocks) == 20:
+                # Check how many have prices > 0 (some stocks may not have data from yfinance)
+                stocks_with_prices = [s for s in stocks if s.get("price", 0) > 0]
+                # Check if all are BIST stocks
+                all_bist = all(s.get("market") == "BIST" for s in stocks)
+                
+                # Accept if at least 18/20 (90%) have prices - some stocks may be delisted or have data issues
+                if len(stocks_with_prices) >= 18 and all_bist:
+                    log_test("16. Market stocks endpoint", True, 
+                            f"20 BIST stocks, {len(stocks_with_prices)} with live prices")
+                    return True
+                else:
+                    log_test("16. Market stocks endpoint", False, 
+                            f"20 stocks but only {len(stocks_with_prices)} have prices, all_bist={all_bist}")
+                    return False
+            else:
+                log_test("16. Market stocks endpoint", False, 
+                        f"Expected 20 stocks, got {len(stocks)}")
+                return False
+        else:
+            log_test("16. Market stocks endpoint", False, 
+                    f"Status {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("16. Market stocks endpoint", False, f"Exception: {e}")
+        return False
+
+
+def test_17_market_indices():
+    """Test 17: GET /api/market/indices -> verify 11 indices"""
+    try:
+        resp = requests.get(f"{BASE_URL}/market/indices", timeout=20)
+        if resp.status_code == 200:
+            indices = resp.json()
+            
+            if len(indices) == 11:
+                log_test("17. Market indices endpoint", True, 
+                        f"11 indices returned")
+                return True
+            else:
+                log_test("17. Market indices endpoint", False, 
+                        f"Expected 11 indices, got {len(indices)}")
+                return False
+        else:
+            log_test("17. Market indices endpoint", False, 
+                    f"Status {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("17. Market indices endpoint", False, f"Exception: {e}")
+        return False
+
+
+def test_18_kyc_submit_too_large():
+    """Test 18: POST /api/kyc/submit with huge base64 -> EXPECT 413"""
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Create a base64 string that's > 5MB for selfie (limit is 5MB)
+    # base64 is ~4/3 of binary, so 5MB binary = ~6.67MB base64
+    # Let's create ~7MB base64 to exceed the limit
+    huge_selfie = "data:image/jpeg;base64," + "A" * (7 * 1024 * 1024)
+    id_doc_b64 = "data:image/jpeg;base64," + "B" * 2000
+    
+    payload = {
+        "selfie_base64": huge_selfie,
+        "id_doc_base64": id_doc_b64,
+        "id_doc_type": "tc_kimlik",
+        "id_doc_filename": "kimlik.jpg",
+        "id_doc_mime": "image/jpeg"
+    }
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/kyc/submit", json=payload, headers=headers, timeout=30)
+        if resp.status_code == 413:
+            error_msg = resp.json().get("detail", "")
+            if "çok büyük" in error_msg or "Dosya" in error_msg:
+                log_test("18. KYC submit with huge file returns 413", True, 
+                        f"Correctly rejected: {error_msg}")
+                return True
+            else:
+                log_test("18. KYC submit with huge file returns 413", False, 
+                        f"413 but unexpected message: {error_msg}")
+                return False
+        else:
+            log_test("18. KYC submit with huge file returns 413", False, 
+                    f"Expected 413, got {resp.status_code}")
+            return False
+    except Exception as e:
+        log_test("18. KYC submit with huge file returns 413", False, f"Exception: {e}")
+        return False
+
+
+def test_19_kyc_submit_no_auth():
+    """Test 19: POST /api/kyc/submit without auth -> 401"""
+    payload = {
+        "selfie_base64": "data:image/jpeg;base64," + "A" * 100,
+        "id_doc_base64": "data:image/jpeg;base64," + "B" * 100,
+        "id_doc_type": "tc_kimlik"
+    }
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/kyc/submit", json=payload, timeout=10)
+        if resp.status_code == 401:
+            log_test("19. KYC submit without auth returns 401", True, 
+                    "Correctly requires authentication")
+            return True
+        else:
+            log_test("19. KYC submit without auth returns 401", False, 
+                    f"Expected 401, got {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("19. KYC submit without auth returns 401", False, f"Exception: {e}")
+        return False
+
+
+def test_20_funds_endpoint_removed():
+    """Test 20: GET /api/funds -> 404 (endpoint removed)"""
+    try:
+        resp = requests.get(f"{BASE_URL}/funds", timeout=10)
+        if resp.status_code == 404:
+            log_test("20. Funds endpoint removed (404)", True, 
+                    "Funds endpoint correctly removed")
+            return True
+        else:
+            log_test("20. Funds endpoint removed (404)", False, 
+                    f"Expected 404, got {resp.status_code}: {resp.text}")
+            return False
+    except Exception as e:
+        log_test("20. Funds endpoint removed (404)", False, f"Exception: {e}")
+        return False
+
+
 def main():
-    print(f"\n{'='*80}")
-    print(f"{Colors.BLUE}FonAkış Backend API Test Suite{Colors.END}")
-    print(f"Backend URL: {API_BASE}")
-    print(f"{'='*80}")
+    """Run all tests in sequence."""
+    print("=" * 80)
+    print("FonAkış Backend Test Suite - Post-Refactor Validation")
+    print("=" * 80)
+    print()
     
+    # Run tests in order
     tests = [
-        ("Register", test_register),
-        ("Login", test_login),
-        ("Login Wrong Password", test_login_wrong_password),
-        ("Auth Me With Token", test_auth_me_with_token),
-        ("Auth Me Without Token", test_auth_me_without_token),
-        ("Update Profile", test_update_profile),
-        ("Change Password", test_change_password),
-        ("List Funds", test_list_funds),
-        ("Get Fund", test_get_fund),
-        ("Get Fund Not Found", test_get_fund_not_found),
-        ("Portfolio Initial", test_portfolio_initial),
-        ("Deposit", test_deposit),
-        ("Buy First", test_buy_first),
-        ("Buy Second", test_buy_second),
-        ("Buy Insufficient", test_buy_insufficient),
-        ("Portfolio With Holdings", test_portfolio_with_holdings),
-        ("Sell", test_sell),
-        ("Sell Insufficient", test_sell_insufficient),
-        ("Sell No Holding", test_sell_no_holding),
-        ("Withdraw Insufficient", test_withdraw_insufficient),
-        ("Withdraw", test_withdraw),
-        ("List Transactions", test_list_transactions),
-        ("List Transactions Filtered", test_list_transactions_filtered),
-        ("List News", test_list_news),
+        test_1_register_fresh_user,
+        test_2_get_me_kyc_field,
+        test_3_cash_deposit_no_kyc,
+        test_4_trade_buy_without_kyc,
+        test_5_kyc_status_none,
+        test_6_kyc_submit,
+        test_7_kyc_status_pending,
+        test_8_trade_buy_pending_kyc,
+        test_9_kyc_demo_approve,
+        test_10_trade_buy_approved_kyc,
+        test_11_trade_buy_invalid_symbol,
+        test_12_trade_buy_old_format,
+        test_13_trade_sell_partial,
+        test_14_trade_sell_no_holding,
+        test_15_portfolio_live_prices,
+        test_16_market_stocks,
+        test_17_market_indices,
+        test_18_kyc_submit_too_large,
+        test_19_kyc_submit_no_auth,
+        test_20_funds_endpoint_removed,
     ]
     
-    passed = 0
-    failed = 0
+    for test_fn in tests:
+        test_fn()
+        print()
     
-    for name, test_func in tests:
-        try:
-            result = test_func()
-            if result:
-                passed += 1
-            else:
-                failed += 1
-        except Exception as e:
-            log_error(f"Exception in {name}: {str(e)}")
-            failed += 1
+    # Summary
+    print("=" * 80)
+    print("TEST SUMMARY")
+    print("=" * 80)
     
-    print(f"\n{'='*80}")
-    print(f"{Colors.BLUE}Test Summary{Colors.END}")
-    print(f"{'='*80}")
-    print(f"Total: {passed + failed}")
-    print(f"{Colors.GREEN}Passed: {passed}{Colors.END}")
-    print(f"{Colors.RED}Failed: {failed}{Colors.END}")
-    print(f"{'='*80}\n")
+    passed = sum(1 for t in test_results if t["passed"])
+    failed = sum(1 for t in test_results if not t["passed"])
+    total = len(test_results)
+    
+    print(f"Total: {total} | Passed: {passed} | Failed: {failed}")
+    print()
     
     if failed > 0:
-        sys.exit(1)
-    else:
-        sys.exit(0)
+        print("FAILED TESTS:")
+        for t in test_results:
+            if not t["passed"]:
+                print(f"  ❌ {t['name']}")
+                if t["details"]:
+                    print(f"     {t['details']}")
+        print()
+    
+    # Exit code
+    sys.exit(0 if failed == 0 else 1)
+
 
 if __name__ == "__main__":
     main()

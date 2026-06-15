@@ -30,7 +30,6 @@ api.interceptors.response.use(
 
 export default api;
 
-// API helpers
 export const authApi = {
   register: (data) => api.post('/auth/register', data).then((r) => r.data),
   login: (data) => api.post('/auth/login', data).then((r) => r.data),
@@ -39,9 +38,10 @@ export const authApi = {
   changePassword: (data) => api.post('/auth/change-password', data).then((r) => r.data),
 };
 
-export const fundsApi = {
-  list: () => api.get('/funds').then((r) => r.data),
-  get: (code) => api.get(`/funds/${code}`).then((r) => r.data),
+export const kycApi = {
+  submit: (data) => api.post('/kyc/submit', data).then((r) => r.data),
+  status: () => api.get('/kyc/status').then((r) => r.data),
+  demoApprove: () => api.post('/kyc/demo-approve').then((r) => r.data),
 };
 
 export const portfolioApi = {
@@ -49,8 +49,8 @@ export const portfolioApi = {
 };
 
 export const tradeApi = {
-  buy: (code, units) => api.post('/trade/buy', { code, units }).then((r) => r.data),
-  sell: (code, units) => api.post('/trade/sell', { code, units }).then((r) => r.data),
+  buy: (symbol, units) => api.post('/trade/buy', { symbol, units }).then((r) => r.data),
+  sell: (symbol, units) => api.post('/trade/sell', { symbol, units }).then((r) => r.data),
 };
 
 export const cashApi = {
@@ -70,4 +70,3 @@ export const marketApi = {
 export const newsApi = {
   list: () => api.get('/news').then((r) => r.data),
 };
-

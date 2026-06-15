@@ -37,49 +37,14 @@ class UserOut(BaseModel):
     iban_masked: Optional[str] = 'TR** **** **** **** **** ** 1234'
     cash_balance: float = 0.0
     total_deposits: float = 0.0
+    kyc_status: str = 'none'  # 'none' | 'pending' | 'approved' | 'rejected'
+    kyc_submitted_at: Optional[datetime] = None
+    kyc_reviewed_at: Optional[datetime] = None
     created_at: datetime
 
 
-class SeriesPoint(BaseModel):
-    d: int
-    v: float
-
-
-class Fund(BaseModel):
-    code: str
-    name: str
-    category: str
-    category_label: str
-    price: float
-    change_24h: float
-    change_ytd: float
-    risk: int
-    aum: float
-    manager: str
-    min_buy: float = 1
-    currency: str = 'TRY'
-    series: List[SeriesPoint]
-    desc: str
-
-
-class HoldingOut(BaseModel):
-    code: str
-    units: float
-    avg_cost: float
-    current_price: float
-
-
-class PortfolioOut(BaseModel):
-    cash_balance: float
-    holdings: List[HoldingOut]
-    total_value: float
-    total_cost: float
-    total_pl: float
-    total_pl_pct: float
-
-
 class TradeIn(BaseModel):
-    code: str
+    symbol: str
     units: float = Field(gt=0)
 
 
@@ -87,23 +52,12 @@ class CashIn(BaseModel):
     amount: float = Field(gt=0)
 
 
-class TransactionOut(BaseModel):
-    id: str
-    date: str
-    type: Literal['Alım', 'Satım', 'Para Yatırma', 'Para Çekme']
-    code: str
-    units: float
-    price: float
-    total: float
-    status: str = 'Gerçekleşti'
-
-
-class NewsOut(BaseModel):
-    id: str
-    date: str
-    tag: str
-    title: str
-    summary: str
+class KycSubmitIn(BaseModel):
+    selfie_base64: str = Field(min_length=10, description='base64 encoded image (data URI or raw)')
+    id_doc_base64: str = Field(min_length=10)
+    id_doc_type: Literal['tc_kimlik', 'pasaport', 'ehliyet']
+    id_doc_filename: Optional[str] = None
+    id_doc_mime: Optional[str] = 'image/jpeg'
 
 
 def new_id() -> str:

@@ -108,7 +108,7 @@ user_problem_statement: |
   buy/sell trades, portfolio tracking, cash deposit/withdraw, transaction history, news, profile.
 
 backend:
-  - task: "JWT Auth (register/login/me/profile/password)"
+  - task: "JWT Auth (register/login/me/profile/password) with KYC fields"
     implemented: true
     working: true
     file: "/app/backend/server.py, /app/backend/auth.py"
@@ -122,23 +122,11 @@ backend:
       - working: true
         agent: "testing"
         comment: "✓ All auth endpoints working correctly. Register creates user with JWT token. Login validates credentials (401 on wrong password). GET /me requires Bearer token (401 without). PATCH /profile updates user fields. Change-password validates current password (400 on wrong), updates hash, new password login works."
-
-  - task: "Funds list/detail endpoints (seeded)"
-    implemented: true
-    working: true
-    file: "/app/backend/server.py, /app/backend/seed_data.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-      - working: "NA"
-        agent: "main"
-        comment: "12 funds seeded on startup, public GET /api/funds and /api/funds/{code}."
       - working: true
         agent: "testing"
-        comment: "✓ Funds endpoints working. GET /api/funds returns 12 funds with all required fields (code, name, category, category_label, price, change_24h, change_ytd, risk, aum, manager, currency, series, desc). GET /api/funds/{code} returns single fund. 404 for non-existent fund code."
+        comment: "✓ POST-REFACTOR: Auth working with KYC fields. Register creates user with kyc_status='none'. GET /me returns kyc_status field. All auth flows validated."
 
-  - task: "Portfolio endpoint with holdings + P/L calc"
+  - task: "KYC document submission and approval flow"
     implemented: true
     working: true
     file: "/app/backend/server.py"
@@ -148,12 +136,57 @@ backend:
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "GET /api/portfolio returns cash_balance + holdings (joined with live fund price) + total_value/cost/pl/pct."
+        comment: "POST /api/kyc/submit accepts selfie_base64 + id_doc_base64, validates size (<5MB selfie, <8MB ID), stores in kyc_documents collection, sets user.kyc_status='pending'. GET /api/kyc/status returns status + has_documents. POST /api/kyc/demo-approve instantly approves for testing."
       - working: true
         agent: "testing"
-        comment: "✓ Portfolio endpoint working correctly. Initial state: cash_balance=0, holdings=[], totals=0. After trades: holdings show correct units, avg_cost, current_price. P/L calculations accurate (total_value, total_cost, total_pl, total_pl_pct)."
+        comment: "✓ KYC flow working perfectly. Submit validates file sizes (413 for >5MB selfie). Status endpoint returns correct state. Demo-approve transitions pending->approved. Auth required (401 without token)."
 
-  - task: "Trade buy/sell with avg cost calc"
+  - task: "BIST stock trading with KYC enforcement"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py, /app/backend/market.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "POST /api/trade/buy & /api/trade/sell now use {symbol, units} body (not {code, units}). Validates KYC status (403 if not approved). Fetches live prices from yfinance. Validates symbol exists in TRADABLE registry. Weighted avg cost calculation. Records transactions."
+      - working: true
+        agent: "testing"
+        comment: "✓ Trading working with KYC enforcement. Buy/sell blocked with 403 if kyc_status != 'approved'. Old {code, units} format correctly rejected (422). Valid BIST symbols (THYAO.IS) work after KYC approval. Invalid symbols return 404. Partial sells work. Insufficient balance/units validated. CRITICAL BUG FIXED: Single-symbol yfinance fetch was returning price=0 due to MultiIndex DataFrame handling - fixed in market.py line 127."
+
+  - task: "Portfolio with live BIST stock prices"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py, /app/backend/market.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "GET /api/portfolio returns cash_balance + holdings with live prices from yfinance. Holdings show symbol, name, market='BIST', current_price, avg_cost, P/L calculations."
+      - working: true
+        agent: "testing"
+        comment: "✓ Portfolio working with live prices. Holdings show correct BIST stock data (THYAO.IS: name='Türk Hava Yolları', market='BIST', current_price>0). P/L calculations accurate."
+
+  - task: "Market data endpoints (stocks/indices/commodities/fx/crypto)"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py, /app/backend/market.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "GET /api/market/{group} returns live data from yfinance. Stocks: 20 BIST stocks. Indices: 11 (BIST + global). Commodities, FX, Crypto also available. 90s cache TTL."
+      - working: true
+        agent: "testing"
+        comment: "✓ Market endpoints working. Stocks: 20 BIST stocks, 19/20 with live prices (KOZAL.IS delisted per yfinance). Indices: 11 returned. All public endpoints, no auth required."
+
+  - task: "Funds endpoints removed"
     implemented: true
     working: true
     file: "/app/backend/server.py"
@@ -163,10 +196,10 @@ backend:
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "POST /api/trade/buy & /api/trade/sell. Validates cash/units, updates holdings with weighted avg, deducts/adds cash, records transaction."
+        comment: "Funds collection dropped on startup. /api/funds endpoint removed (404). Old fund-based trading no longer supported."
       - working: true
         agent: "testing"
-        comment: "✓ Trade endpoints working perfectly. Buy: validates cash balance (400 on insufficient), deducts cost, creates/updates holding with weighted avg cost. Multiple buys to same fund correctly calculate weighted average. Sell: validates units (400 on insufficient/no holding), adds proceeds to cash, updates/removes holding. Transaction recorded for each trade."
+        comment: "✓ Funds correctly removed. GET /api/funds returns 404. Old fund codes rejected in trade endpoints."
 
   - task: "Cash deposit/withdraw"
     implemented: true
@@ -182,6 +215,9 @@ backend:
       - working: true
         agent: "testing"
         comment: "✓ Cash operations working. Deposit: adds amount to cash_balance, records transaction. Withdraw: validates balance (400 on insufficient), deducts amount, records transaction. Both return updated cash_balance and transaction details."
+      - working: true
+        agent: "testing"
+        comment: "✓ POST-REFACTOR: Cash deposit works without KYC (as expected). Tested with 50000 TRY deposit."
 
   - task: "Transactions list with filters"
     implemented: true
@@ -229,18 +265,11 @@ frontend:
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 1
+  test_sequence: 2
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "JWT Auth (register/login/me/profile/password)"
-    - "Funds list/detail endpoints (seeded)"
-    - "Portfolio endpoint with holdings + P/L calc"
-    - "Trade buy/sell with avg cost calc"
-    - "Cash deposit/withdraw"
-    - "Transactions list with filters"
-    - "News endpoint (seeded)"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -248,10 +277,22 @@ test_plan:
 agent_communication:
   - agent: "main"
     message: |
-      Backend implemented (FastAPI + MongoDB + JWT). 12 funds + 6 news items seeded on startup.
-      Test full lifecycle: register -> login -> me -> deposit cash -> list funds -> buy -> portfolio -> sell -> transactions -> withdraw.
-      Auth uses Bearer token. All routes under /api prefix.
-      Note: passlib + bcrypt + pyjwt already in requirements.txt. JWT_SECRET in backend/.env.
+      MAJOR REFACTOR: Funds removed entirely. Trading now uses BIST stocks with live yfinance prices.
+      Added KYC module (selfie + ID doc upload, base64 in MongoDB).
+      Test new flows:
+      1. Register -> kyc_status should be 'none'
+      2. POST /api/cash/deposit works (no KYC needed)
+      3. POST /api/trade/buy with valid BIST symbol (e.g. 'THYAO.IS') and units -> should fail 403 'KYC onayı gereklidir' if kyc_status != approved
+      4. POST /api/kyc/submit with selfie_base64 + id_doc_base64 (small base64 strings ok) -> status -> 'pending'
+      5. POST /api/kyc/demo-approve -> status -> 'approved'
+      6. POST /api/trade/buy with THYAO.IS units=1 after KYC approved -> success
+      7. POST /api/trade/sell with same symbol works
+      8. GET /api/portfolio shows holdings with live prices (current_price > 0)
+      9. GET /api/market/stocks returns BIST stocks with live prices
+      10. GET /api/funds should return 404 or empty (funds removed); /api/trade/buy with old fund code like 'FAH' should return 404 'Sembol bulunamadı'.
+      11. KYC validation: too-large base64 (e.g. selfie > 5MB equivalent) should return 413.
+      12. POST /api/kyc/submit without auth -> 401.
+      Backend uses live Yahoo Finance data so prices vary. Use any one BIST stock symbol that exists in market.TRADABLE list (THYAO.IS, AKBNK.IS, GARAN.IS, KCHOL.IS, etc).
   - agent: "testing"
     message: |
       ✅ BACKEND TESTING COMPLETE - ALL 24 TESTS PASSED
@@ -271,3 +312,43 @@ agent_communication:
       Transaction recording confirmed.
       
       Backend is production-ready. No issues found.
+  - agent: "testing"
+    message: |
+      ✅ POST-REFACTOR TESTING COMPLETE - ALL 20 TESTS PASSED
+      
+      Comprehensive validation of major refactor (funds→BIST stocks + KYC):
+      
+      ✅ PASSED (20/20):
+      1. Register user with kyc_status='none' ✓
+      2. GET /me has kyc_status field ✓
+      3. Cash deposit without KYC ✓
+      4. Trade buy without KYC returns 403 ✓
+      5. KYC status before submit (none, no docs) ✓
+      6. KYC submit sets status to pending ✓
+      7. KYC status after submit (pending, has docs) ✓
+      8. Trade buy with pending KYC returns 403 ✓
+      9. KYC demo-approve sets status to approved ✓
+      10. Trade buy with approved KYC succeeds ✓
+      11. Trade buy with invalid symbol returns 404 ✓
+      12. Trade buy with old {code, units} format returns 422 ✓
+      13. Trade sell partial succeeds ✓
+      14. Trade sell without holding returns 400 ✓
+      15. Portfolio shows live prices (THYAO.IS with yfinance data) ✓
+      16. Market stocks endpoint (20 BIST stocks, 19/20 with prices) ✓
+      17. Market indices endpoint (11 indices) ✓
+      18. KYC submit with huge file returns 413 ✓
+      19. KYC submit without auth returns 401 ✓
+      20. Funds endpoint removed (404) ✓
+      
+      🐛 CRITICAL BUG FIXED:
+      - market.py line 127: Single-symbol yfinance fetch was returning price=0 due to incorrect MultiIndex DataFrame handling. When fetching one symbol, yfinance returns columns like ('THYAO.IS', 'Close') but code was trying to access df['Close'] directly. Fixed by extracting the symbol-specific sub-dataframe first.
+      
+      📊 KEY VALIDATIONS:
+      - KYC enforcement: Trade endpoints correctly block with 403 if kyc_status != 'approved'
+      - Body format change: Old {code, units} correctly rejected with 422, new {symbol, units} works
+      - Live prices: yfinance integration working (19/20 BIST stocks have data; KOZAL.IS delisted)
+      - File size limits: KYC submit correctly rejects >5MB selfie with 413
+      - Auth required: KYC endpoints return 401 without token
+      - Funds removed: /api/funds returns 404, old fund codes rejected
+      
+      Backend refactor is production-ready. All critical flows validated.

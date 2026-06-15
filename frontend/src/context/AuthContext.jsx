@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { authApi, portfolioApi, tradeApi, cashApi, txApi, fundsApi, setToken, getToken } from '../api/client';
+import { authApi, portfolioApi, tradeApi, cashApi, txApi, marketApi, setToken, getToken } from '../api/client';
 
 const AuthContext = createContext(null);
 
@@ -8,7 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [holdings, setHoldings] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [cashBalance, setCashBalance] = useState(0);
-  const [funds, setFunds] = useState([]);
+  const [stocks, setStocks] = useState([]); // BIST tradable stocks
   const [ready, setReady] = useState(false);
 
   const refreshPortfolio = useCallback(async () => {
@@ -23,14 +23,13 @@ export const AuthProvider = ({ children }) => {
     try { setTransactions(await txApi.list()); } catch (e) { /* ignore */ }
   }, []);
 
-  const refreshFunds = useCallback(async () => {
-    try { setFunds(await fundsApi.list()); } catch (e) { /* ignore */ }
+  const refreshStocks = useCallback(async () => {
+    try { setStocks(await marketApi.group('stocks')); } catch (e) { /* ignore */ }
   }, []);
 
-  // bootstrap
   useEffect(() => {
     const bootstrap = async () => {
-      await refreshFunds();
+      await refreshStocks();
       if (getToken()) {
         try {
           const { user: u } = await authApi.me();
@@ -42,7 +41,7 @@ export const AuthProvider = ({ children }) => {
       setReady(true);
     };
     bootstrap();
-  }, [refreshFunds, refreshPortfolio, refreshTransactions]);
+  }, [refreshStocks, refreshPortfolio, refreshTransactions]);
 
   const login = async (email, password) => {
     const { token, user: u } = await authApi.login({ email, password });
@@ -70,28 +69,22 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => { setToken(null); setUser(null); setHoldings([]); setTransactions([]); setCashBalance(0); };
 
-  const buyFund = async (fund, units) => {
+  const buyStock = async (symbol, units) => {
     try {
-      const r = await tradeApi.buy(fund.code, units);
+      const r = await tradeApi.buy(symbol, units);
       setCashBalance(r.cash_balance);
-      await refreshPortfolio();
-      await refreshTransactions();
+      await refreshPortfolio(); await refreshTransactions();
       return { ok: true };
-    } catch (e) {
-      return { ok: false, msg: e.response?.data?.detail || 'Hata oluştu' };
-    }
+    } catch (e) { return { ok: false, msg: e.response?.data?.detail || 'Hata oluştu' }; }
   };
 
-  const sellFund = async (fund, units) => {
+  const sellStock = async (symbol, units) => {
     try {
-      const r = await tradeApi.sell(fund.code, units);
+      const r = await tradeApi.sell(symbol, units);
       setCashBalance(r.cash_balance);
-      await refreshPortfolio();
-      await refreshTransactions();
+      await refreshPortfolio(); await refreshTransactions();
       return { ok: true };
-    } catch (e) {
-      return { ok: false, msg: e.response?.data?.detail || 'Hata oluştu' };
-    }
+    } catch (e) { return { ok: false, msg: e.response?.data?.detail || 'Hata oluştu' }; }
   };
 
   const depositCash = async (amount) => {
@@ -113,13 +106,19 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUser = (next) => setUser(next);
+  const refreshMe = useCallback(async () => {
+    try {
+      const { user: u } = await authApi.me();
+      setUser(u);
+    } catch (e) { /* ignore */ }
+  }, []);
 
   return (
     <AuthContext.Provider value={{
-      user, ready, holdings, transactions, cashBalance, funds,
+      user, ready, holdings, transactions, cashBalance, stocks,
       login, register, logout,
-      buyFund, sellFund, depositCash, withdrawCash,
-      refreshPortfolio, refreshTransactions, refreshFunds, updateUser,
+      buyStock, sellStock, depositCash, withdrawCash,
+      refreshPortfolio, refreshTransactions, refreshStocks, refreshMe, updateUser,
     }}>
       {children}
     </AuthContext.Provider>

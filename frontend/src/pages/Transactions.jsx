@@ -4,6 +4,7 @@ import { formatTRY, formatNum } from '../data/mock';
 import { Download, Filter } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Button } from '../components/ui/button';
+import { SymbolBadge } from './Market';
 
 const typeColor = (t) => {
   if (t === 'Alım') return 'bg-emerald-50 text-emerald-700';
@@ -85,7 +86,7 @@ const Transactions = () => {
                 <tr key={t.id} className="border-t border-slate-100 hover:bg-slate-50/60">
                   <td className="px-5 py-3.5 text-slate-600">{t.date}</td>
                   <td className="px-5 py-3.5"><span className={`px-2 py-1 rounded-md text-xs font-semibold ${typeColor(t.type)}`}>{t.type}</span></td>
-                  <td className="px-5 py-3.5 font-semibold text-[#0B2447]">{t.code}</td>
+                  <td className="px-5 py-3.5 font-semibold text-[#0B2447]">{t.code === '-' ? '-' : <SymbolBadge symbol={t.code} market="BIST" />}</td>
                   <td className="px-5 py-3.5 text-right">{t.units ? formatNum(t.units, 2) : '-'}</td>
                   <td className="px-5 py-3.5 text-right">{t.price ? t.price.toFixed(4) : '-'}</td>
                   <td className={`px-5 py-3.5 text-right font-semibold ${t.total < 0 ? 'fa-negative' : 'text-[#0B2447]'}`}>{formatTRY(t.total)}</td>
