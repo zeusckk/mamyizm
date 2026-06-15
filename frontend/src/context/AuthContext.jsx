@@ -54,7 +54,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (data) => {
-    const { token, user: u } = await authApi.register(data);
+    const payload = {
+      full_name: data.fullName || data.full_name,
+      email: data.email,
+      password: data.password,
+      phone: data.phone || undefined,
+      tckn: data.tckn || undefined,
+    };
+    const { token, user: u } = await authApi.register(payload);
     setToken(token);
     setUser(u);
     setHoldings([]); setTransactions([]); setCashBalance(0);
