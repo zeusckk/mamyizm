@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Briefcase, TrendingUp, ListOrdered, FileText, User, Newspaper, LogOut, Wallet, Menu, X, ChevronDown, Search } from 'lucide-react';
+import { LayoutDashboard, Briefcase, TrendingUp, ListOrdered, FileText, User, Newspaper, LogOut, Wallet, Menu, X, ChevronDown, Search, BarChart3 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { formatTRY } from '../../data/mock';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 const nav = [
   { to: '/panel', label: 'Kontrol Paneli', icon: LayoutDashboard },
   { to: '/portfoyum', label: 'Portföyüm', icon: Briefcase },
+  { to: '/piyasa', label: 'Piyasa', icon: BarChart3 },
   { to: '/fonlar', label: 'Fonlar', icon: TrendingUp },
   { to: '/islemler', label: 'İşlemlerim', icon: ListOrdered },
   { to: '/hesap-ozeti', label: 'Hesap Özeti', icon: FileText },

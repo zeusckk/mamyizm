@@ -14,6 +14,7 @@ from models import (
     Fund, PortfolioOut, HoldingOut, TradeIn, CashIn, TransactionOut, NewsOut, new_id,
 )
 from seed_data import seed_funds, SEED_NEWS
+import market
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -271,6 +272,24 @@ async def list_transactions(uid: str = Depends(get_current_user_id), type: Optio
 async def list_news():
     items = await db.news.find().sort('date', -1).to_list(50)
     return [{'id': n['_id'], 'date': n['date'], 'tag': n['tag'], 'title': n['title'], 'summary': n['summary']} for n in items]
+
+
+# ---------- market (real-time via yfinance) ----------
+@api.get('/market/{group}')
+async def market_group(group: str):
+    if group not in ('indices', 'stocks', 'commodities', 'fx', 'crypto'):
+        raise HTTPException(404, 'Geçersiz piyasa grubu')
+    items = await market.get_market_group(group)
+    return items
+
+
+@api.get('/market-symbol/detail')
+async def market_symbol_detail(symbol: str):
+    """Query via /api/market-symbol/detail?symbol=BTC-USD (avoid path-encoding issues with ^, =, .)"""
+    d = await market.get_symbol_detail(symbol)
+    if not d:
+        raise HTTPException(404, 'Sembol bulunamadı')
+    return d
 
 
 app.include_router(api)

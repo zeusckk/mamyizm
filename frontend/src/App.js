@@ -9,6 +9,7 @@ import Register from './pages/Register';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import Funds from './pages/Funds';
+import Market from './pages/Market';
 import FundDetail from './pages/FundDetail';
 import Trade from './pages/Trade';
 import Portfolio from './pages/Portfolio';
@@ -44,6 +45,7 @@ function App() {
             <Route element={<PrivateRoute />}>
               <Route element={<DashboardLayout />}>
                 <Route path="/panel" element={<Dashboard />} />
+                <Route path="/piyasa" element={<Market />} />
                 <Route path="/fonlar" element={<Funds />} />
                 <Route path="/fonlar/:code" element={<FundDetail />} />
                 <Route path="/islem/:code?" element={<Trade />} />

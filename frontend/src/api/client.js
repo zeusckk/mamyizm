@@ -62,6 +62,12 @@ export const txApi = {
   list: (params = {}) => api.get('/transactions', { params }).then((r) => r.data),
 };
 
+export const marketApi = {
+  group: (group) => api.get(`/market/${group}`).then((r) => r.data),
+  symbolDetail: (symbol) => api.get('/market-symbol/detail', { params: { symbol } }).then((r) => r.data),
+};
+
 export const newsApi = {
   list: () => api.get('/news').then((r) => r.data),
 };
+
