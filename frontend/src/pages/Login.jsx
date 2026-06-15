@@ -6,6 +6,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { ShieldCheck, TrendingUp, Lock, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
 
 const Login = () => {
   const { login } = useAuth();
@@ -19,10 +20,16 @@ const Login = () => {
     e.preventDefault();
     if (!email || !password) return toast.error('E-posta ve şifre gerekli');
     setLoading(true);
-    await login(email, password);
-    setLoading(false);
-    toast.success('Hoş geldiniz');
-    nav('/panel');
+    try {
+      await login(email, password);
+      toast.success('Hoş geldiniz');
+      nav('/panel');
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'Giriş yapılamadı. Bilgileri kontrol edin.';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -61,7 +68,12 @@ const Login = () => {
 
       {/* Right: Form */}
       <div className="flex items-center justify-center p-6 lg:p-12 bg-white">
-        <div className="w-full max-w-md">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full max-w-md"
+        >
           <div className="lg:hidden flex items-center gap-2 mb-8">
             <div className="h-10 w-10 rounded-lg fa-gradient-navy flex items-center justify-center"><span className="text-white font-extrabold text-xl" style={{ fontFamily: 'Manrope' }}>F</span></div>
             <div className="font-extrabold text-xl text-[#0B2447]" style={{ fontFamily: 'Manrope' }}>FonAkış</div>
@@ -101,7 +113,7 @@ const Login = () => {
           <p className="mt-8 text-[11px] text-slate-400 text-center leading-relaxed">
             *Bu, eğitim amaçlı demo bir prototiptir. Gerçek bir SPK lisanslı kurum değildir.
           </p>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
