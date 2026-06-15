@@ -14,6 +14,7 @@ from models import (
     TradeIn, CashIn, KycSubmitIn, new_id,
 )
 import market
+from admin import make_admin_router, seed_default_admin
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -40,6 +41,8 @@ async def user_to_out(u: dict) -> dict:
         'kyc_status': u.get('kyc_status', 'none'),
         'kyc_submitted_at': u.get('kyc_submitted_at'),
         'kyc_reviewed_at': u.get('kyc_reviewed_at'),
+        'role': u.get('role', 'user'),
+        'suspended': bool(u.get('suspended', False)),
         'created_at': u.get('created_at', datetime.now(timezone.utc)),
     }
 
@@ -67,6 +70,7 @@ async def startup_init():
     await db.users.create_index('email', unique=True)
     await db.holdings.create_index([('user_id', 1), ('code', 1)], unique=True)
     await db.transactions.create_index([('user_id', 1), ('date', -1)])
+    await db.audit_log.create_index([('created_at', -1)])
     if await db.news.count_documents({}) == 0:
         await db.news.insert_many(NEWS_SEED)
     # remove obsolete funds collection if exists
@@ -74,6 +78,8 @@ async def startup_init():
         await db.funds.drop()
     except Exception:
         pass
+    # seed default admin
+    await seed_default_admin(db, hash_password)
 
 
 # ---------- health ----------
@@ -106,6 +112,8 @@ async def login(body: LoginIn):
     u = await db.users.find_one({'email': body.email.lower()})
     if not u or not verify_password(body.password, u['password_hash']):
         raise HTTPException(401, 'E-posta veya şifre hatalı')
+    if u.get('suspended'):
+        raise HTTPException(403, 'Hesabınız askıya alınmıştır. Destek ekibi ile iletişime geçin.')
     return {'token': create_token(u['_id']), 'user': await user_to_out(u)}
 
 
@@ -366,6 +374,7 @@ async def list_news():
 
 
 app.include_router(api)
+app.include_router(make_admin_router(db, market), prefix='/api')
 app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])
 
 

@@ -70,3 +70,37 @@ export const marketApi = {
 export const newsApi = {
   list: () => api.get('/news').then((r) => r.data),
 };
+
+export const adminApi = {
+  stats: () => api.get('/admin/stats').then((r) => r.data),
+  // Users
+  listUsers: (params = {}) => api.get('/admin/users', { params }).then((r) => r.data),
+  userDetail: (id) => api.get(`/admin/users/${id}`).then((r) => r.data),
+  updateUser: (id, data) => api.patch(`/admin/users/${id}`, data).then((r) => r.data),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`).then((r) => r.data),
+  // KYC
+  kycPending: () => api.get('/admin/kyc/pending').then((r) => r.data),
+  kycAll: (status) => api.get('/admin/kyc/all', { params: { status } }).then((r) => r.data),
+  kycDocs: (userId) => api.get(`/admin/kyc/${userId}/documents`).then((r) => r.data),
+  kycApprove: (userId) => api.post(`/admin/kyc/${userId}/approve`).then((r) => r.data),
+  kycReject: (userId, reason) => api.post(`/admin/kyc/${userId}/reject`, { reason }).then((r) => r.data),
+  // Transactions
+  transactions: (params = {}) => api.get('/admin/transactions', { params }).then((r) => r.data),
+  // News
+  listNews: () => api.get('/admin/news').then((r) => r.data),
+  createNews: (data) => api.post('/admin/news', data).then((r) => r.data),
+  updateNews: (id, data) => api.patch(`/admin/news/${id}`, data).then((r) => r.data),
+  deleteNews: (id) => api.delete(`/admin/news/${id}`).then((r) => r.data),
+  // Reports
+  topStocks: () => api.get('/admin/reports/top-stocks').then((r) => r.data),
+  topUsers: () => api.get('/admin/reports/top-users').then((r) => r.data),
+  holdingsDist: () => api.get('/admin/reports/holdings-distribution').then((r) => r.data),
+  // Admins
+  admins: () => api.get('/admin/admins').then((r) => r.data),
+  createAdmin: (data) => api.post('/admin/admins', data).then((r) => r.data),
+  // Settings
+  settings: () => api.get('/admin/settings').then((r) => r.data),
+  updateSettings: (data) => api.patch('/admin/settings', data).then((r) => r.data),
+  // Audit log
+  auditLog: (params = {}) => api.get('/admin/audit-log', { params }).then((r) => r.data),
+};
