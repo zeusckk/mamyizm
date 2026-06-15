@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useOutlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Briefcase, ListOrdered, FileText, User, Newspaper, LogOut, Wallet, Menu, X, ChevronDown, BarChart3, ShoppingCart } from 'lucide-react';
+import { LayoutDashboard, Briefcase, ListOrdered, FileText, User, Newspaper, LogOut, Wallet, Menu, X, ChevronDown, BarChart3, ShoppingCart, Sun, Moon } from 'lucide-react';
 import { Button } from '../ui/button';
 import { formatTRY } from '../../data/mock';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useTheme } from '../../context/ThemeContext';
 
 const nav = [
   { to: '/panel', label: 'Kontrol Paneli', icon: LayoutDashboard },
@@ -97,6 +98,23 @@ const DashboardLayout = () => {
   const [open, setOpen] = useState(false);
 
   const handleLogout = () => { logout(); navigate('/giris'); };
+  const { theme, toggleTheme } = useTheme();
+
+  const ThemeBtn = ({ mobile = false, onAfter }) => (
+    <button
+      onClick={() => { toggleTheme(); onAfter && onAfter(); }}
+      data-testid="theme-toggle-btn"
+      className={`w-full flex items-center justify-between px-3 ${mobile ? 'py-3' : 'py-2.5'} rounded-lg text-sm transition-colors text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-[#0B2447] mt-2`}
+    >
+      <span className="flex items-center gap-3">
+        {theme === 'dark' ? <Sun size={mobile ? 18 : 17} /> : <Moon size={mobile ? 18 : 17} />}
+        <span>Tema</span>
+      </span>
+      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300">
+        {theme === 'dark' ? 'Koyu' : 'Açık'}
+      </span>
+    </button>
+  );
 
   return (
     <div className="min-h-screen bg-[#F6F8FB] text-[#0B2447] pb-20 lg:pb-0">
@@ -209,6 +227,7 @@ const DashboardLayout = () => {
                 >
                   <LogOut size={18} /> Çıkış Yap
                 </motion.button>
+                <ThemeBtn mobile onAfter={() => setOpen(false)} />
               </motion.div>
             </motion.nav>
           </motion.div>
@@ -225,6 +244,7 @@ const DashboardLayout = () => {
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button onClick={() => navigate('/islem')} className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white">+ Hızlı İşlem</Button>
             </motion.div>
+            <ThemeBtn />
           </nav>
         </aside>
 

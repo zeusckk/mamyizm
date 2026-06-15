@@ -2,6 +2,7 @@ import React from 'react';
 import './App.css';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { Toaster } from './components/ui/sonner';
 
 import Login from './pages/Login';
@@ -53,7 +54,8 @@ const PublicRoute = () => {
 function App() {
   return (
     <div className="App">
-      <AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
         <BrowserRouter>
           <Routes>
             <Route element={<PublicRoute />}>
@@ -98,6 +100,7 @@ function App() {
         </BrowserRouter>
         <Toaster richColors position="top-right" />
       </AuthProvider>
+      </ThemeProvider>
     </div>
   );
 }

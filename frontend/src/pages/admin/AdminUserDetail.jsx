@@ -48,103 +48,101 @@ const AdminUserDetail = () => {
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
 
-  if (loading && !d) return <div className="text-slate-400 p-8 text-center">Yükleniyor…</div>;
-  if (!d) return <div className="text-red-400 p-8 text-center">Kullanıcı bulunamadı</div>;
+  if (loading && !d) return <div className="fa-card fa-glow p-8 text-center text-slate-400">Yükleniyor…</div>;
+  if (!d) return <div className="fa-card fa-glow p-8 text-center text-red-500">Kullanıcı bulunamadı</div>;
 
   const initials = (d.full_name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
   return (
-    <div className="-mx-3 sm:-mx-4 lg:-mx-6 -mt-4 sm:-mt-6 -mb-12 min-h-[calc(100vh-3.5rem)] bg-[#0A0E1A] text-slate-100" data-testid="admin-user-detail-page">
-      <div className="px-4 sm:px-6 lg:px-10 py-6 sm:py-8">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white" style={{ fontFamily: 'Manrope' }}>Müşteri Detayı</h1>
-            <p className="text-slate-400 text-sm mt-1">Pozisyon ve hesap hareketleri</p>
-          </div>
-          <div className="flex gap-2">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-              <Circle size={8} className="fill-emerald-400 text-emerald-400" /> Piyasa Verisi
-            </div>
-            <Button variant="outline" size="sm" onClick={load} className="bg-slate-800/60 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white"><RefreshCw size={13} className="mr-1.5" /> Yenile</Button>
-          </div>
+    <div className="space-y-4 sm:space-y-6" data-testid="admin-user-detail-page">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#0B2447]" style={{ fontFamily: 'Manrope' }}>Müşteri Detayı</h1>
+          <p className="text-slate-500 text-xs sm:text-sm mt-1">Pozisyon ve hesap hareketleri</p>
         </div>
-
-        <Button variant="outline" size="sm" onClick={() => navigate('/admin/kullanicilar')} className="mb-6 bg-slate-800/60 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white" data-testid="back-to-users-btn">
-          <ArrowLeft size={14} className="mr-1.5" /> Müşteriler
-        </Button>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 lg:gap-6">
-          {/* LEFT — profile card */}
-          <aside className="space-y-4">
-            <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-5">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="h-16 w-16 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 text-white flex items-center justify-center font-bold text-xl shrink-0">{initials}</div>
-                <div className="min-w-0">
-                  <div className="font-bold text-white text-lg leading-tight truncate" data-testid="user-name">{d.full_name}</div>
-                  <span className="inline-block mt-1.5 px-2 py-0.5 text-[10px] font-bold tracking-wider rounded bg-slate-800 text-slate-300 uppercase">{d.tier || 'STANDARD'}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mb-5">
-                <StatBox label="Bakiye" value={formatTRY(d.cash_balance)} testid="stat-balance" />
-                <StatBox label="Kredi" value={formatTRY(d.credit_balance || 0)} testid="stat-credit" />
-                <StatBox label="Açık Poz" value={d.positions_summary?.open_count ?? 0} />
-                <StatBox label="Açık P/L" value={`${(d.positions_summary?.open_pl ?? 0) >= 0 ? '+' : ''}${formatTRY(d.positions_summary?.open_pl || 0)}`} positive={(d.positions_summary?.open_pl || 0) >= 0} />
-              </div>
-
-              <div className="space-y-3 text-sm">
-                <Row label="TC Kimlik" value={d.tckn || '-'} />
-                <Row label="Telefon" value={d.phone || '-'} />
-                <Row label="E-posta" value={d.email} mono />
-                <Row label="Müşteri No" value={d.customer_no} mono />
-                <Row label="Kayıt" value={fmtDate(d.created_at)} />
-                <Row label="Para birimi" value={d.currency || 'TRY'} />
-                <Row label="KYC" value={d.kyc_status === 'approved' ? 'verified' : 'unverified'} colored={d.kyc_status === 'approved' ? 'text-emerald-400' : 'text-amber-400'} />
-                <Row label="Durum" value={d.suspended ? 'Askıda' : 'Aktif'} colored={d.suspended ? 'text-red-400' : 'text-emerald-400'} />
-              </div>
-
-              <div className="space-y-2 mt-6">
-                <Button onClick={() => setBalOpen(true)} className="w-full bg-amber-400 hover:bg-amber-300 text-[#0A0E1A] font-bold shadow-lg shadow-amber-500/20" data-testid="balance-action-btn"><Wallet size={14} className="mr-2" /> Bakiye İşlemi</Button>
-                <Button onClick={() => setCredOpen(true)} variant="outline" className="w-full bg-slate-800/40 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white" data-testid="credit-action-btn"><CreditCard size={14} className="mr-2" /> Kredi İşlemi</Button>
-                <Button onClick={() => setInfoOpen(true)} variant="outline" className="w-full bg-slate-800/40 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white" data-testid="info-edit-btn"><UserCog size={14} className="mr-2" /> Bilgileri Düzenle</Button>
-                <Button onClick={() => setPwdOpen(true)} variant="outline" className="w-full bg-slate-800/40 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white" data-testid="password-btn"><KeyRound size={14} className="mr-2" /> Şifre Değiştir</Button>
-              </div>
-            </div>
-          </aside>
-
-          {/* RIGHT — tabs */}
-          <section className="rounded-2xl bg-slate-900/60 border border-slate-800 min-h-[60vh]">
-            {/* Tab nav */}
-            <div className="border-b border-slate-800 px-3 sm:px-5 overflow-x-auto fa-scrollbar">
-              <div className="flex gap-1 sm:gap-2 min-w-max">
-                {TABS.map((t) => {
-                  const cnt = t.count && Array.isArray(d[t.count]) ? d[t.count].length : null;
-                  const active = tab === t.id;
-                  return (
-                    <button key={t.id} onClick={() => setTab(t.id)} data-testid={`tab-${t.id}`} className={`relative px-3 sm:px-4 py-3 text-sm whitespace-nowrap transition ${active ? 'text-white font-semibold' : 'text-slate-400 hover:text-slate-200'}`}>
-                      <span className="flex items-center gap-2">
-                        {t.label}
-                        {cnt !== null && <span className={`text-[10px] px-1.5 py-0.5 rounded ${active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>{cnt}</span>}
-                      </span>
-                      {active && <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-emerald-400 rounded-t" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Tab content */}
-            <div className="p-4 sm:p-6">
-              {tab === 'open' && <OpenPositionsTable rows={d.open_positions} />}
-              {tab === 'closed' && <TxTable rows={d.closed_trades} kind="closed" />}
-              {tab === 'deposits' && <TxTable rows={d.deposits} kind="deposits" />}
-              {tab === 'withdrawals' && <TxTable rows={d.withdrawals} kind="withdrawals" />}
-              {tab === 'movements' && <TxTable rows={d.movements} kind="movements" />}
-              {tab === 'kyc' && <KycPanel d={d} reload={load} />}
-            </div>
-          </section>
+        <div className="flex gap-2">
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
+            <Circle size={8} className="fill-emerald-500 text-emerald-500" /> Piyasa Verisi
+          </div>
+          <Button variant="outline" size="sm" onClick={load}><RefreshCw size={13} className="mr-1.5" /> Yenile</Button>
         </div>
+      </div>
+
+      <Button variant="outline" size="sm" onClick={() => navigate('/admin/kullanicilar')} data-testid="back-to-users-btn">
+        <ArrowLeft size={14} className="mr-1.5" /> Müşteriler
+      </Button>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4 lg:gap-6">
+        {/* LEFT — profile card */}
+        <aside className="space-y-4">
+          <div className="fa-card fa-glow p-5">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 text-white flex items-center justify-center font-bold text-xl shrink-0">{initials}</div>
+              <div className="min-w-0">
+                <div className="font-bold text-[#0B2447] text-lg leading-tight truncate" data-testid="user-name">{d.full_name}</div>
+                <span className="inline-block mt-1.5 px-2 py-0.5 text-[10px] font-bold tracking-wider rounded bg-slate-100 text-slate-600 uppercase">{d.tier || 'STANDARD'}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <StatBox label="Bakiye" value={formatTRY(d.cash_balance)} testid="stat-balance" />
+              <StatBox label="Kredi" value={formatTRY(d.credit_balance || 0)} testid="stat-credit" />
+              <StatBox label="Açık Poz" value={d.positions_summary?.open_count ?? 0} />
+              <StatBox label="Açık P/L" value={`${(d.positions_summary?.open_pl ?? 0) >= 0 ? '+' : ''}${formatTRY(d.positions_summary?.open_pl || 0)}`} positive={(d.positions_summary?.open_pl || 0) >= 0} />
+            </div>
+
+            <div className="space-y-2.5 text-sm">
+              <Row label="TC Kimlik" value={d.tckn || '-'} />
+              <Row label="Telefon" value={d.phone || '-'} />
+              <Row label="E-posta" value={d.email} mono />
+              <Row label="Müşteri No" value={d.customer_no} mono />
+              <Row label="Kayıt" value={fmtDate(d.created_at)} />
+              <Row label="Para birimi" value={d.currency || 'TRY'} />
+              <Row label="KYC" value={d.kyc_status === 'approved' ? 'verified' : 'unverified'} colored={d.kyc_status === 'approved' ? 'text-emerald-600' : 'text-amber-600'} />
+              <Row label="Durum" value={d.suspended ? 'Askıda' : 'Aktif'} colored={d.suspended ? 'text-red-600' : 'text-emerald-600'} />
+            </div>
+
+            <div className="space-y-2 mt-6">
+              <Button onClick={() => setBalOpen(true)} className="w-full bg-amber-400 hover:bg-amber-300 text-[#0B2447] font-bold" data-testid="balance-action-btn"><Wallet size={14} className="mr-2" /> Bakiye İşlemi</Button>
+              <Button onClick={() => setCredOpen(true)} variant="outline" className="w-full" data-testid="credit-action-btn"><CreditCard size={14} className="mr-2" /> Kredi İşlemi</Button>
+              <Button onClick={() => setInfoOpen(true)} variant="outline" className="w-full" data-testid="info-edit-btn"><UserCog size={14} className="mr-2" /> Bilgileri Düzenle</Button>
+              <Button onClick={() => setPwdOpen(true)} variant="outline" className="w-full" data-testid="password-btn"><KeyRound size={14} className="mr-2" /> Şifre Değiştir</Button>
+            </div>
+          </div>
+        </aside>
+
+        {/* RIGHT — tabs */}
+        <section className="fa-card fa-glow min-h-[60vh] overflow-hidden">
+          {/* Tab nav */}
+          <div className="border-b border-slate-100 px-3 sm:px-5 overflow-x-auto fa-scrollbar">
+            <div className="flex gap-1 sm:gap-2 min-w-max">
+              {TABS.map((t) => {
+                const cnt = t.count && Array.isArray(d[t.count]) ? d[t.count].length : null;
+                const active = tab === t.id;
+                return (
+                  <button key={t.id} onClick={() => setTab(t.id)} data-testid={`tab-${t.id}`} className={`relative px-3 sm:px-4 py-3 text-sm whitespace-nowrap transition ${active ? 'text-[#0B2447] font-semibold' : 'text-slate-500 hover:text-[#0B2447]'}`}>
+                    <span className="flex items-center gap-2">
+                      {t.label}
+                      {cnt !== null && <span className={`text-[10px] px-1.5 py-0.5 rounded ${active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{cnt}</span>}
+                    </span>
+                    {active && <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-emerald-500 rounded-t" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Tab content */}
+          <div className="p-4 sm:p-6">
+            {tab === 'open' && <OpenPositionsTable rows={d.open_positions} />}
+            {tab === 'closed' && <TxTable rows={d.closed_trades} kind="closed" />}
+            {tab === 'deposits' && <TxTable rows={d.deposits} kind="deposits" />}
+            {tab === 'withdrawals' && <TxTable rows={d.withdrawals} kind="withdrawals" />}
+            {tab === 'movements' && <TxTable rows={d.movements} kind="movements" />}
+            {tab === 'kyc' && <KycPanel d={d} reload={load} />}
+          </div>
+        </section>
       </div>
 
       <BalanceDialog open={balOpen} onOpenChange={setBalOpen} userId={id} current={d.cash_balance} onDone={load} kind="balance" />
@@ -157,21 +155,21 @@ const AdminUserDetail = () => {
 
 // ----- helpers -----
 const StatBox = ({ label, value, positive, testid }) => (
-  <div className="rounded-xl bg-slate-800/60 border border-slate-700 p-3" data-testid={testid}>
-    <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">{label}</div>
-    <div className={`mt-1 font-bold ${positive === undefined ? 'text-white' : positive ? 'text-emerald-400' : 'text-red-400'} text-base sm:text-lg truncate`} style={{ fontFamily: 'Manrope' }}>{value}</div>
+  <div className="rounded-xl bg-slate-50 border border-slate-100 p-3" data-testid={testid}>
+    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{label}</div>
+    <div className={`mt-1 font-bold ${positive === undefined ? 'text-[#0B2447]' : positive ? 'text-emerald-600' : 'text-red-600'} text-base sm:text-lg truncate`} style={{ fontFamily: 'Manrope' }}>{value}</div>
   </div>
 );
 
 const Row = ({ label, value, mono, colored }) => (
-  <div className="flex items-center justify-between gap-3 border-b border-slate-800/70 pb-2 last:border-0">
-    <span className="text-slate-400 text-xs uppercase tracking-wider">{label}</span>
-    <span className={`font-semibold ${mono ? 'font-mono text-xs' : 'text-sm'} ${colored || 'text-white'} truncate text-right`}>{value}</span>
+  <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2 last:border-0">
+    <span className="text-slate-500 text-xs uppercase tracking-wider">{label}</span>
+    <span className={`font-semibold ${mono ? 'font-mono text-xs' : 'text-sm'} ${colored || 'text-[#0B2447]'} truncate text-right`}>{value}</span>
   </div>
 );
 
 const Empty = ({ icon: Icon = Activity, msg }) => (
-  <div className="py-16 text-center text-slate-500">
+  <div className="py-16 text-center text-slate-400">
     <Icon size={26} className="mx-auto mb-2 opacity-40" />
     {msg}
   </div>
@@ -193,14 +191,14 @@ const OpenPositionsTable = ({ rows }) => {
         </tr></thead>
         <tbody>
           {rows.map((h) => (
-            <tr key={h.code} className="border-t border-slate-800 hover:bg-slate-800/30">
-              <td className="py-3 pr-3"><div className="font-mono font-bold text-white">{h.code.replace('.IS', '')}</div><div className="text-[11px] text-slate-500">{h.name}</div></td>
-              <td className="py-3 px-3 text-right text-slate-200">{h.units.toFixed(2)}</td>
-              <td className="py-3 px-3 text-right text-slate-300">{h.avg_cost.toFixed(4)}</td>
-              <td className="py-3 px-3 text-right text-slate-300">{(h.current_price || 0).toFixed(4)}</td>
-              <td className="py-3 px-3 text-right text-slate-300">{formatTRY(h.cost)}</td>
-              <td className="py-3 px-3 text-right text-white font-semibold">{formatTRY(h.value)}</td>
-              <td className={`py-3 pl-3 text-right font-bold ${h.pl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            <tr key={h.code} className="border-t border-slate-100 hover:bg-slate-50/60">
+              <td className="py-3 pr-3"><div className="font-mono font-bold text-[#0B2447]">{h.code.replace('.IS', '')}</div><div className="text-[11px] text-slate-500">{h.name}</div></td>
+              <td className="py-3 px-3 text-right text-slate-700">{h.units.toFixed(2)}</td>
+              <td className="py-3 px-3 text-right text-slate-600">{h.avg_cost.toFixed(4)}</td>
+              <td className="py-3 px-3 text-right text-slate-600">{(h.current_price || 0).toFixed(4)}</td>
+              <td className="py-3 px-3 text-right text-slate-600">{formatTRY(h.cost)}</td>
+              <td className="py-3 px-3 text-right text-[#0B2447] font-semibold">{formatTRY(h.value)}</td>
+              <td className={`py-3 pl-3 text-right font-bold ${h.pl >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 <div className="flex items-center justify-end gap-1">
                   {h.pl >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                   {formatTRY(h.pl)}
@@ -233,19 +231,19 @@ const TxTable = ({ rows, kind }) => {
         </tr></thead>
         <tbody>
           {rows.map((t) => (
-            <tr key={t.id} className="border-t border-slate-800 hover:bg-slate-800/30">
-              <td className="py-3 pr-3 text-slate-400 text-xs">{t.date}</td>
+            <tr key={t.id} className="border-t border-slate-100 hover:bg-slate-50/60">
+              <td className="py-3 pr-3 text-slate-500 text-xs">{t.date}</td>
               <td className="py-3 px-3"><span className={`px-2 py-0.5 text-[10px] rounded font-bold uppercase ${
-                t.type === 'Alım' ? 'bg-emerald-500/10 text-emerald-400'
-                : t.type === 'Satım' ? 'bg-red-500/10 text-red-400'
-                : t.type === 'Para Yatırma' ? 'bg-blue-500/10 text-blue-400'
-                : t.type === 'Para Çekme' ? 'bg-amber-500/10 text-amber-400'
-                : 'bg-slate-700/50 text-slate-300'
+                t.type === 'Alım' ? 'bg-emerald-50 text-emerald-700'
+                : t.type === 'Satım' ? 'bg-red-50 text-red-700'
+                : t.type === 'Para Yatırma' ? 'bg-blue-50 text-blue-700'
+                : t.type === 'Para Çekme' ? 'bg-amber-50 text-amber-700'
+                : 'bg-slate-100 text-slate-600'
               }`}>{t.type}</span></td>
-              <td className="py-3 px-3 font-mono text-slate-200">{(t.code || '-').replace('.IS', '')}</td>
-              <td className="py-3 px-3 text-right text-slate-300">{t.units ? t.units.toFixed(2) : '-'}</td>
-              <td className="py-3 px-3 text-right text-slate-300">{t.price ? t.price.toFixed(4) : '-'}</td>
-              <td className={`py-3 pl-3 text-right font-bold ${t.total < 0 ? 'text-red-400' : 'text-emerald-400'}`}>{formatTRY(t.total)}</td>
+              <td className="py-3 px-3 font-mono text-[#0B2447]">{(t.code || '-').replace('.IS', '')}</td>
+              <td className="py-3 px-3 text-right text-slate-600">{t.units ? t.units.toFixed(2) : '-'}</td>
+              <td className="py-3 px-3 text-right text-slate-600">{t.price ? t.price.toFixed(4) : '-'}</td>
+              <td className={`py-3 pl-3 text-right font-bold ${t.total < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{formatTRY(t.total)}</td>
             </tr>
           ))}
         </tbody>
@@ -277,33 +275,33 @@ const KycPanel = ({ d, reload }) => {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <KvBox k="Durum" v={d.kyc_status} colored={d.kyc_status === 'approved' ? 'text-emerald-400' : d.kyc_status === 'pending' ? 'text-amber-400' : d.kyc_status === 'rejected' ? 'text-red-400' : 'text-slate-300'} />
+        <KvBox k="Durum" v={d.kyc_status} colored={d.kyc_status === 'approved' ? 'text-emerald-600' : d.kyc_status === 'pending' ? 'text-amber-600' : d.kyc_status === 'rejected' ? 'text-red-600' : 'text-slate-600'} />
         <KvBox k="Gönderim" v={d.kyc_submitted_at ? fmtDate(d.kyc_submitted_at) : '-'} />
         <KvBox k="İnceleme" v={d.kyc_reviewed_at ? fmtDate(d.kyc_reviewed_at) : '-'} />
         <KvBox k="Belge Türü" v={d.kyc_id_doc_type || '-'} />
       </div>
-      {d.kyc_rejection_reason && <div className="rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-sm p-3">Ret nedeni: {d.kyc_rejection_reason}</div>}
+      {d.kyc_rejection_reason && <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm p-3">Ret nedeni: {d.kyc_rejection_reason}</div>}
       {docs && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {docs.selfie_base64 && (
             <div>
-              <div className="text-xs text-slate-400 uppercase mb-2">Selfie</div>
-              <img src={docs.selfie_base64.startsWith('data:') ? docs.selfie_base64 : `data:image/jpeg;base64,${docs.selfie_base64}`} alt="selfie" className="rounded-lg border border-slate-800 max-h-72 w-full object-contain bg-slate-950" />
+              <div className="text-xs text-slate-500 uppercase mb-2">Selfie</div>
+              <img src={docs.selfie_base64.startsWith('data:') ? docs.selfie_base64 : `data:image/jpeg;base64,${docs.selfie_base64}`} alt="selfie" className="rounded-lg border border-slate-200 max-h-72 w-full object-contain bg-slate-50" />
             </div>
           )}
           {docs.id_doc_base64 && (
             <div>
-              <div className="text-xs text-slate-400 uppercase mb-2">Kimlik Belgesi ({docs.id_doc_type})</div>
-              <img src={docs.id_doc_base64.startsWith('data:') ? docs.id_doc_base64 : `data:image/jpeg;base64,${docs.id_doc_base64}`} alt="id" className="rounded-lg border border-slate-800 max-h-72 w-full object-contain bg-slate-950" />
+              <div className="text-xs text-slate-500 uppercase mb-2">Kimlik Belgesi ({docs.id_doc_type})</div>
+              <img src={docs.id_doc_base64.startsWith('data:') ? docs.id_doc_base64 : `data:image/jpeg;base64,${docs.id_doc_base64}`} alt="id" className="rounded-lg border border-slate-200 max-h-72 w-full object-contain bg-slate-50" />
             </div>
           )}
         </div>
       )}
       {!d.has_kyc_documents && <Empty msg="KYC belgesi yüklenmemiş" />}
       {d.kyc_status === 'pending' && d.has_kyc_documents && (
-        <div className="flex gap-2 pt-3 border-t border-slate-800">
-          <Button onClick={approve} className="bg-emerald-600 hover:bg-emerald-500 text-white" data-testid="kyc-approve-btn">Onayla</Button>
-          <Button onClick={reject} variant="outline" className="border-red-700 text-red-300 hover:bg-red-500/10" data-testid="kyc-reject-btn">Reddet</Button>
+        <div className="flex gap-2 pt-3 border-t border-slate-100">
+          <Button onClick={approve} className="bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="kyc-approve-btn">Onayla</Button>
+          <Button onClick={reject} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" data-testid="kyc-reject-btn">Reddet</Button>
         </div>
       )}
     </div>
@@ -311,13 +309,13 @@ const KycPanel = ({ d, reload }) => {
 };
 
 const KvBox = ({ k, v, colored }) => (
-  <div className="rounded-lg bg-slate-800/40 border border-slate-700 p-3">
-    <div className="text-[10px] uppercase text-slate-400 tracking-wider">{k}</div>
-    <div className={`mt-1 font-semibold ${colored || 'text-white'}`}>{v}</div>
+  <div className="rounded-lg bg-slate-50 border border-slate-100 p-3">
+    <div className="text-[10px] uppercase text-slate-500 tracking-wider">{k}</div>
+    <div className={`mt-1 font-semibold ${colored || 'text-[#0B2447]'}`}>{v}</div>
   </div>
 );
 
-// ----- dialogs -----
+// ----- dialogs (light theme) -----
 const BalanceDialog = ({ open, onOpenChange, userId, current, onDone, kind }) => {
   const [amt, setAmt] = useState('');
   const [op, setOp] = useState('add'); // add | subtract
@@ -343,23 +341,23 @@ const BalanceDialog = ({ open, onOpenChange, userId, current, onDone, kind }) =>
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-slate-900 border-slate-700 text-slate-100">
-        <DialogHeader><DialogTitle className="text-white">{kind === 'balance' ? 'Bakiye İşlemi' : 'Kredi İşlemi'}</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>{kind === 'balance' ? 'Bakiye İşlemi' : 'Kredi İşlemi'}</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div className="bg-slate-800/60 border border-slate-700 p-3 rounded-lg text-sm">
-            <div className="text-xs text-slate-400">Mevcut</div>
-            <div className="font-bold text-white text-lg" style={{ fontFamily: 'Manrope' }}>{formatTRY(current || 0)}</div>
+          <div className="bg-slate-50 p-3 rounded-lg text-sm">
+            <div className="text-xs text-slate-500">Mevcut</div>
+            <div className="font-bold text-[#0B2447] text-lg" style={{ fontFamily: 'Manrope' }}>{formatTRY(current || 0)}</div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Button type="button" onClick={() => setOp('add')} className={op === 'add' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-200'} data-testid="op-add"><TrendingUp size={14} className="mr-1.5" /> Ekle</Button>
-            <Button type="button" onClick={() => setOp('subtract')} className={op === 'subtract' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-200'} data-testid="op-sub"><TrendingDown size={14} className="mr-1.5" /> Düş</Button>
+            <Button type="button" onClick={() => setOp('add')} className={op === 'add' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'} data-testid="op-add"><TrendingUp size={14} className="mr-1.5" /> Ekle</Button>
+            <Button type="button" onClick={() => setOp('subtract')} className={op === 'subtract' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'} data-testid="op-sub"><TrendingDown size={14} className="mr-1.5" /> Düş</Button>
           </div>
-          <div><Label className="text-xs text-slate-300">Tutar (TRY)</Label><Input type="number" value={amt} onChange={(e) => setAmt(e.target.value)} className="mt-1 h-11 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500" placeholder="0,00" data-testid="balance-amount-input" /></div>
-          <div><Label className="text-xs text-slate-300">Açıklama (opsiyonel)</Label><Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className="mt-1 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500" placeholder="Sebep" data-testid="balance-reason-input" /></div>
+          <div><Label className="text-xs">Tutar (TRY)</Label><Input type="number" value={amt} onChange={(e) => setAmt(e.target.value)} className="mt-1 h-11" placeholder="0,00" data-testid="balance-amount-input" /></div>
+          <div><Label className="text-xs">Açıklama (opsiyonel)</Label><Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className="mt-1" placeholder="Sebep" data-testid="balance-reason-input" /></div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white">Vazgeç</Button>
-          <Button onClick={submit} disabled={busy} className="bg-amber-400 hover:bg-amber-300 text-[#0A0E1A] font-bold" data-testid="balance-submit-btn">{busy ? 'Gönderiliyor…' : 'Uygula'}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Vazgeç</Button>
+          <Button onClick={submit} disabled={busy} className="bg-[#0B2447] hover:bg-[#173A6B] text-white" data-testid="balance-submit-btn">{busy ? 'Gönderiliyor…' : 'Uygula'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -378,19 +376,19 @@ const InfoDialog = ({ open, onOpenChange, user, onDone }) => {
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-slate-900 border-slate-700 text-slate-100">
-        <DialogHeader><DialogTitle className="text-white">Bilgileri Düzenle</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Bilgileri Düzenle</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div><Label className="text-xs text-slate-300">Ad Soyad</Label><Input value={form.full_name || ''} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="mt-1 bg-slate-800 border-slate-700 text-white" data-testid="info-name-input" /></div>
-          <div><Label className="text-xs text-slate-300">E-posta</Label><Input value={form.email || ''} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1 bg-slate-800 border-slate-700 text-white" data-testid="info-email-input" /></div>
+          <div><Label className="text-xs">Ad Soyad</Label><Input value={form.full_name || ''} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="mt-1" data-testid="info-name-input" /></div>
+          <div><Label className="text-xs">E-posta</Label><Input value={form.email || ''} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1" data-testid="info-email-input" /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs text-slate-300">Telefon</Label><Input value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1 bg-slate-800 border-slate-700 text-white" /></div>
-            <div><Label className="text-xs text-slate-300">TCKN</Label><Input value={form.tckn || ''} onChange={(e) => setForm({ ...form, tckn: e.target.value })} className="mt-1 bg-slate-800 border-slate-700 text-white" /></div>
+            <div><Label className="text-xs">Telefon</Label><Input value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1" /></div>
+            <div><Label className="text-xs">TCKN</Label><Input value={form.tckn || ''} onChange={(e) => setForm({ ...form, tckn: e.target.value })} className="mt-1" /></div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white">Vazgeç</Button>
-          <Button onClick={submit} disabled={busy} className="bg-amber-400 hover:bg-amber-300 text-[#0A0E1A] font-bold" data-testid="info-save-btn">{busy ? 'Kaydediliyor…' : 'Kaydet'}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Vazgeç</Button>
+          <Button onClick={submit} disabled={busy} className="bg-[#0B2447] hover:bg-[#173A6B] text-white" data-testid="info-save-btn">{busy ? 'Kaydediliyor…' : 'Kaydet'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -412,16 +410,16 @@ const PasswordDialog = ({ open, onOpenChange, userId }) => {
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-slate-900 border-slate-700 text-slate-100">
-        <DialogHeader><DialogTitle className="text-white">Şifre Değiştir</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Şifre Değiştir</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div><Label className="text-xs text-slate-300">Yeni Şifre</Label><Input type="password" value={p1} onChange={(e) => setP1(e.target.value)} className="mt-1 bg-slate-800 border-slate-700 text-white" data-testid="new-password-input" /></div>
-          <div><Label className="text-xs text-slate-300">Yeni Şifre (Tekrar)</Label><Input type="password" value={p2} onChange={(e) => setP2(e.target.value)} className="mt-1 bg-slate-800 border-slate-700 text-white" /></div>
-          <div className="text-xs text-amber-300 bg-amber-500/10 p-2 rounded-lg border border-amber-500/30">Bu işlem kullanıcının mevcut oturumlarını etkilemez. Kullanıcıya yeni şifresini iletmeyi unutmayın.</div>
+          <div><Label className="text-xs">Yeni Şifre</Label><Input type="password" value={p1} onChange={(e) => setP1(e.target.value)} className="mt-1" data-testid="new-password-input" /></div>
+          <div><Label className="text-xs">Yeni Şifre (Tekrar)</Label><Input type="password" value={p2} onChange={(e) => setP2(e.target.value)} className="mt-1" /></div>
+          <div className="text-xs text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200">Bu işlem kullanıcının mevcut oturumlarını etkilemez. Kullanıcıya yeni şifresini iletmeyi unutmayın.</div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white">Vazgeç</Button>
-          <Button onClick={submit} disabled={busy} className="bg-amber-400 hover:bg-amber-300 text-[#0A0E1A] font-bold" data-testid="password-submit-btn">{busy ? 'Güncelleniyor…' : 'Güncelle'}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Vazgeç</Button>
+          <Button onClick={submit} disabled={busy} className="bg-[#0B2447] hover:bg-[#173A6B] text-white" data-testid="password-submit-btn">{busy ? 'Güncelleniyor…' : 'Güncelle'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

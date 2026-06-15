@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useOutlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Users, ShieldCheck, ListOrdered, Newspaper, BarChart2, UserCog, Settings, FileClock, LogOut, Menu, X, ChevronDown, ShieldAlert, Wallet, Banknote } from 'lucide-react';
+import { LayoutDashboard, Users, ShieldCheck, ListOrdered, Newspaper, BarChart2, UserCog, Settings, FileClock, LogOut, Menu, X, ChevronDown, ShieldAlert, Wallet, Banknote, Sun, Moon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useTheme } from '../../context/ThemeContext';
 
 const nav = [
   { to: '/admin/panel', label: 'Genel Bakış', icon: LayoutDashboard },
@@ -49,12 +50,29 @@ const NavItem = ({ to, label, icon: Icon, onClick }) => (
 
 const AdminLayout = () => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const outlet = useOutlet();
   const [open, setOpen] = useState(false);
 
   const handleLogout = () => { logout(); navigate('/giris'); };
+
+  const ThemeToggle = ({ onAfter }) => (
+    <button
+      onClick={() => { toggleTheme(); onAfter && onAfter(); }}
+      data-testid="theme-toggle-btn"
+      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-[#0B2447] mt-3"
+    >
+      <span className="flex items-center gap-3">
+        {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+        <span>Tema</span>
+      </span>
+      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300">
+        {theme === 'dark' ? 'Koyu' : 'Açık'}
+      </span>
+    </button>
+  );
 
   return (
     <div className="min-h-screen bg-[#F6F8FB] text-[#0B2447]">
@@ -97,6 +115,7 @@ const AdminLayout = () => {
             <motion.nav initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', stiffness: 260, damping: 28 }} className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-2xl p-4 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6"><Logo /><button onClick={() => setOpen(false)} className="p-1.5 hover:bg-slate-100 rounded-lg"><X size={20} /></button></div>
               <div className="space-y-1">{nav.map(({ to, label, icon: Icon }) => <NavItem key={to} to={to} label={label} icon={Icon} onClick={() => setOpen(false)} />)}
+                <ThemeToggle onAfter={() => setOpen(false)} />
                 <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-red-600 hover:bg-red-50 mt-4"><LogOut size={18} /> Çıkış Yap</button>
               </div>
             </motion.nav>
@@ -108,6 +127,7 @@ const AdminLayout = () => {
         <aside className="hidden lg:block lg:w-60 shrink-0">
           <nav className="space-y-1 sticky top-20">
             {nav.map(({ to, label, icon: Icon }) => <NavItem key={to} to={to} label={label} icon={Icon} />)}
+            <ThemeToggle />
           </nav>
         </aside>
         <main className="flex-1 min-w-0">
