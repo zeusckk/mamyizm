@@ -369,6 +369,7 @@ async def list_active_payment_methods(uid: str = Depends(get_current_user_id)):
     for d in items:
         out.append({
             'id': d['_id'], 'type': d.get('type'), 'label': d.get('label'),
+            'bank_code': d.get('bank_code'),
             'bank_name': d.get('bank_name'), 'account_holder': d.get('account_holder'),
             'iban': d.get('iban'), 'account_number': d.get('account_number'),
             'branch': d.get('branch'),

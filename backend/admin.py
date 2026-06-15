@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, Literal, List
 from datetime import datetime, timezone
 import logging
+import hashlib
 
 from auth import hash_password, get_current_user_id
 from models import new_id
@@ -35,10 +36,11 @@ def make_admin_router(db, market_mod):
         })
 
     async def _user_summary(u: dict) -> dict:
-        # auto-assign customer_no if missing
+        # auto-assign customer_no if missing (deterministic — sha256 of user id)
         cust_no = u.get('customer_no')
         if not cust_no:
-            cust_no = 'FNK' + str(abs(hash(u['_id'])))[:10].zfill(10)
+            digest = hashlib.sha256(u['_id'].encode()).hexdigest()
+            cust_no = 'FNK' + str(int(digest[:12], 16))[:10].zfill(10)
             await db.users.update_one({'_id': u['_id']}, {'$set': {'customer_no': cust_no}})
         return {
             'id': u['_id'], 'email': u['email'], 'full_name': u['full_name'],
@@ -593,6 +595,7 @@ def make_admin_router(db, market_mod):
     def _pm_out(d: dict) -> dict:
         return {
             'id': d['_id'], 'type': d.get('type'), 'label': d.get('label'),
+            'bank_code': d.get('bank_code'),
             'bank_name': d.get('bank_name'), 'account_holder': d.get('account_holder'),
             'iban': d.get('iban'), 'account_number': d.get('account_number'),
             'branch': d.get('branch'),

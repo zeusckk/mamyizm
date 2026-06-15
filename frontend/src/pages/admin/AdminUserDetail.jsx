@@ -343,23 +343,23 @@ const BalanceDialog = ({ open, onOpenChange, userId, current, onDone, kind }) =>
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>{kind === 'balance' ? 'Bakiye İşlemi' : 'Kredi İşlemi'}</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-md bg-slate-900 border-slate-700 text-slate-100">
+        <DialogHeader><DialogTitle className="text-white">{kind === 'balance' ? 'Bakiye İşlemi' : 'Kredi İşlemi'}</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div className="bg-slate-50 p-3 rounded-lg text-sm">
-            <div className="text-xs text-slate-500">Mevcut</div>
-            <div className="font-bold text-[#0B2447] text-lg" style={{ fontFamily: 'Manrope' }}>{formatTRY(current || 0)}</div>
+          <div className="bg-slate-800/60 border border-slate-700 p-3 rounded-lg text-sm">
+            <div className="text-xs text-slate-400">Mevcut</div>
+            <div className="font-bold text-white text-lg" style={{ fontFamily: 'Manrope' }}>{formatTRY(current || 0)}</div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Button type="button" onClick={() => setOp('add')} className={op === 'add' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'} data-testid="op-add"><TrendingUp size={14} className="mr-1.5" /> Ekle</Button>
-            <Button type="button" onClick={() => setOp('subtract')} className={op === 'subtract' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'} data-testid="op-sub"><TrendingDown size={14} className="mr-1.5" /> Düş</Button>
+            <Button type="button" onClick={() => setOp('add')} className={op === 'add' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-200'} data-testid="op-add"><TrendingUp size={14} className="mr-1.5" /> Ekle</Button>
+            <Button type="button" onClick={() => setOp('subtract')} className={op === 'subtract' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-200'} data-testid="op-sub"><TrendingDown size={14} className="mr-1.5" /> Düş</Button>
           </div>
-          <div><Label className="text-xs">Tutar (TRY)</Label><Input type="number" value={amt} onChange={(e) => setAmt(e.target.value)} className="mt-1 h-11" placeholder="0,00" data-testid="balance-amount-input" /></div>
-          <div><Label className="text-xs">Açıklama (opsiyonel)</Label><Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className="mt-1" placeholder="Sebep" data-testid="balance-reason-input" /></div>
+          <div><Label className="text-xs text-slate-300">Tutar (TRY)</Label><Input type="number" value={amt} onChange={(e) => setAmt(e.target.value)} className="mt-1 h-11 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500" placeholder="0,00" data-testid="balance-amount-input" /></div>
+          <div><Label className="text-xs text-slate-300">Açıklama (opsiyonel)</Label><Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className="mt-1 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500" placeholder="Sebep" data-testid="balance-reason-input" /></div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Vazgeç</Button>
-          <Button onClick={submit} disabled={busy} className="bg-[#0B2447] hover:bg-[#173A6B] text-white" data-testid="balance-submit-btn">{busy ? 'Gönderiliyor…' : 'Uygula'}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white">Vazgeç</Button>
+          <Button onClick={submit} disabled={busy} className="bg-amber-400 hover:bg-amber-300 text-[#0A0E1A] font-bold" data-testid="balance-submit-btn">{busy ? 'Gönderiliyor…' : 'Uygula'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -378,19 +378,19 @@ const InfoDialog = ({ open, onOpenChange, user, onDone }) => {
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>Bilgileri Düzenle</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-md bg-slate-900 border-slate-700 text-slate-100">
+        <DialogHeader><DialogTitle className="text-white">Bilgileri Düzenle</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div><Label className="text-xs">Ad Soyad</Label><Input value={form.full_name || ''} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="mt-1" data-testid="info-name-input" /></div>
-          <div><Label className="text-xs">E-posta</Label><Input value={form.email || ''} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1" data-testid="info-email-input" /></div>
+          <div><Label className="text-xs text-slate-300">Ad Soyad</Label><Input value={form.full_name || ''} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="mt-1 bg-slate-800 border-slate-700 text-white" data-testid="info-name-input" /></div>
+          <div><Label className="text-xs text-slate-300">E-posta</Label><Input value={form.email || ''} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1 bg-slate-800 border-slate-700 text-white" data-testid="info-email-input" /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">Telefon</Label><Input value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1" /></div>
-            <div><Label className="text-xs">TCKN</Label><Input value={form.tckn || ''} onChange={(e) => setForm({ ...form, tckn: e.target.value })} className="mt-1" /></div>
+            <div><Label className="text-xs text-slate-300">Telefon</Label><Input value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1 bg-slate-800 border-slate-700 text-white" /></div>
+            <div><Label className="text-xs text-slate-300">TCKN</Label><Input value={form.tckn || ''} onChange={(e) => setForm({ ...form, tckn: e.target.value })} className="mt-1 bg-slate-800 border-slate-700 text-white" /></div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Vazgeç</Button>
-          <Button onClick={submit} disabled={busy} className="bg-[#0B2447] hover:bg-[#173A6B] text-white" data-testid="info-save-btn">{busy ? 'Kaydediliyor…' : 'Kaydet'}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white">Vazgeç</Button>
+          <Button onClick={submit} disabled={busy} className="bg-amber-400 hover:bg-amber-300 text-[#0A0E1A] font-bold" data-testid="info-save-btn">{busy ? 'Kaydediliyor…' : 'Kaydet'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -412,16 +412,16 @@ const PasswordDialog = ({ open, onOpenChange, userId }) => {
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>Şifre Değiştir</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-md bg-slate-900 border-slate-700 text-slate-100">
+        <DialogHeader><DialogTitle className="text-white">Şifre Değiştir</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div><Label className="text-xs">Yeni Şifre</Label><Input type="password" value={p1} onChange={(e) => setP1(e.target.value)} className="mt-1" data-testid="new-password-input" /></div>
-          <div><Label className="text-xs">Yeni Şifre (Tekrar)</Label><Input type="password" value={p2} onChange={(e) => setP2(e.target.value)} className="mt-1" /></div>
-          <div className="text-xs text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200">Bu işlem kullanıcının mevcut oturumlarını etkilemez. Kullanıcıya yeni şifresini iletmeyi unutmayın.</div>
+          <div><Label className="text-xs text-slate-300">Yeni Şifre</Label><Input type="password" value={p1} onChange={(e) => setP1(e.target.value)} className="mt-1 bg-slate-800 border-slate-700 text-white" data-testid="new-password-input" /></div>
+          <div><Label className="text-xs text-slate-300">Yeni Şifre (Tekrar)</Label><Input type="password" value={p2} onChange={(e) => setP2(e.target.value)} className="mt-1 bg-slate-800 border-slate-700 text-white" /></div>
+          <div className="text-xs text-amber-300 bg-amber-500/10 p-2 rounded-lg border border-amber-500/30">Bu işlem kullanıcının mevcut oturumlarını etkilemez. Kullanıcıya yeni şifresini iletmeyi unutmayın.</div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Vazgeç</Button>
-          <Button onClick={submit} disabled={busy} className="bg-[#0B2447] hover:bg-[#173A6B] text-white" data-testid="password-submit-btn">{busy ? 'Güncelleniyor…' : 'Güncelle'}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white">Vazgeç</Button>
+          <Button onClick={submit} disabled={busy} className="bg-amber-400 hover:bg-amber-300 text-[#0A0E1A] font-bold" data-testid="password-submit-btn">{busy ? 'Güncelleniyor…' : 'Güncelle'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
