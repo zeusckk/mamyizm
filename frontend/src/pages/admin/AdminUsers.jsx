@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../../api/client';
 import { formatTRY } from '../../data/mock';
-import { Search, RefreshCw, Edit, Trash2, AlertCircle } from 'lucide-react';
+import { Search, RefreshCw, Edit, Trash2, AlertCircle, Eye } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -18,13 +19,13 @@ const statusBadge = (s) => {
 };
 
 const AdminUsers = () => {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
   const [kyc, setKyc] = useState('all');
   const [role, setRole] = useState('all');
-  const [detail, setDetail] = useState(null);
   const [edit, setEdit] = useState(null);
 
   const load = async () => {
@@ -36,10 +37,6 @@ const AdminUsers = () => {
     finally { setLoading(false); }
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [kyc, role]);
-
-  const openDetail = async (u) => {
-    try { setDetail(await adminApi.userDetail(u.id)); } catch (e) { toast.error('Detay alınamadı'); }
-  };
 
   const saveEdit = async () => {
     try {
@@ -119,7 +116,7 @@ const AdminUsers = () => {
               {loading && <tr><td colSpan={7} className="text-center py-12 text-slate-400">Yükleniyor…</td></tr>}
               {!loading && items.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400">Sonuç yok</td></tr>}
               {!loading && items.map((u) => (
-                <tr key={u.id} className="border-t border-slate-100 hover:bg-slate-50/60 cursor-pointer" onClick={() => openDetail(u)}>
+                <tr key={u.id} className="border-t border-slate-100 hover:bg-slate-50/60 cursor-pointer" onClick={() => navigate(`/admin/kullanicilar/${u.id}`)} data-testid={`user-row-${u.id}`}>
                   <td className="px-4 py-3">
                     <div className="font-semibold text-[#0B2447]">{u.full_name}</div>
                     <div className="text-[11px] text-slate-500">{u.email}</div>
@@ -130,8 +127,9 @@ const AdminUsers = () => {
                   <td className="px-4 py-3 text-right font-semibold">{formatTRY(u.cash_balance)}</td>
                   <td className="px-4 py-3 text-center">{u.suspended ? <span className="px-2 py-0.5 text-[10px] rounded bg-red-50 text-red-700 font-semibold">Askıda</span> : <span className="px-2 py-0.5 text-[10px] rounded bg-emerald-50 text-emerald-700 font-semibold">Aktif</span>}</td>
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <button onClick={() => setEdit({ ...u })} className="p-1.5 hover:bg-slate-100 rounded text-[#0B2447]"><Edit size={14} /></button>
-                    <button onClick={() => remove(u.id, u.email)} className="p-1.5 hover:bg-red-50 rounded text-red-600"><Trash2 size={14} /></button>
+                    <button onClick={() => navigate(`/admin/kullanicilar/${u.id}`)} className="p-1.5 hover:bg-slate-100 rounded text-[#0B2447]" title="Detay" data-testid={`detail-btn-${u.id}`}><Eye size={14} /></button>
+                    <button onClick={() => setEdit({ ...u })} className="p-1.5 hover:bg-slate-100 rounded text-[#0B2447]" title="Hızlı düzenle"><Edit size={14} /></button>
+                    <button onClick={() => remove(u.id, u.email)} className="p-1.5 hover:bg-red-50 rounded text-red-600" title="Sil"><Trash2 size={14} /></button>
                   </td>
                 </tr>
               ))}
@@ -139,37 +137,6 @@ const AdminUsers = () => {
           </table>
         </div>
       </div>
-
-      {/* Detail dialog */}
-      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{detail?.full_name}</DialogTitle></DialogHeader>
-          {detail && (
-            <div className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-3">
-                {[['E-posta', detail.email], ['Telefon', detail.phone || '-'], ['TCKN', detail.tckn || '-'], ['Rol', detail.role], ['KYC', detail.kyc_status], ['Durum', detail.suspended ? 'Askıda' : 'Aktif'], ['Nakit', formatTRY(detail.cash_balance)], ['Toplam Yatırılan', formatTRY(detail.total_deposits)]].map(([l, v]) => (
-                  <div key={l}><div className="text-xs text-slate-500">{l}</div><div className="font-semibold text-[#0B2447]">{v}</div></div>
-                ))}
-              </div>
-              <div>
-                <h4 className="text-xs uppercase font-bold text-slate-500 mb-2">Pozisyonlar ({detail.holdings?.length || 0})</h4>
-                {(detail.holdings || []).length === 0 ? <p className="text-sm text-slate-400">Pozisyon yok</p> : (
-                  <table className="w-full text-xs"><thead><tr className="text-slate-500"><th className="text-left py-1">Sembol</th><th className="text-right">Lot</th><th className="text-right">Ort. Maliyet</th></tr></thead>
-                  <tbody>{detail.holdings.map((h) => <tr key={h.code} className="border-t border-slate-100"><td className="py-1.5 font-mono font-semibold">{h.code.replace('.IS','')}</td><td className="text-right">{h.units.toFixed(2)}</td><td className="text-right">{h.avg_cost.toFixed(4)}</td></tr>)}</tbody></table>
-                )}
-              </div>
-              <div>
-                <h4 className="text-xs uppercase font-bold text-slate-500 mb-2">Son İşlemler</h4>
-                {(detail.recent_transactions || []).length === 0 ? <p className="text-sm text-slate-400">İşlem yok</p> : (
-                  <div className="max-h-48 overflow-y-auto fa-scrollbar"><table className="w-full text-xs"><tbody>
-                    {detail.recent_transactions.map((t) => <tr key={t.id} className="border-b border-slate-50"><td className="py-1.5 text-slate-500">{t.date}</td><td className="py-1.5">{t.type}</td><td className="py-1.5 font-mono">{(t.code || '-').replace('.IS','')}</td><td className="py-1.5 text-right font-semibold">{formatTRY(t.total)}</td></tr>)}
-                  </tbody></table></div>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Edit dialog */}
       <Dialog open={!!edit} onOpenChange={(o) => !o && setEdit(null)}>

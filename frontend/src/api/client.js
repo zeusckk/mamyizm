@@ -86,6 +86,10 @@ export const adminApi = {
   userDetail: (id) => api.get(`/admin/users/${id}`).then((r) => r.data),
   updateUser: (id, data) => api.patch(`/admin/users/${id}`, data).then((r) => r.data),
   deleteUser: (id) => api.delete(`/admin/users/${id}`).then((r) => r.data),
+  userAdjustBalance: (id, data) => api.post(`/admin/users/${id}/balance`, data).then((r) => r.data),
+  userAdjustCredit: (id, data) => api.post(`/admin/users/${id}/credit`, data).then((r) => r.data),
+  userUpdateInfo: (id, data) => api.post(`/admin/users/${id}/info`, data).then((r) => r.data),
+  userSetPassword: (id, password) => api.post(`/admin/users/${id}/password`, { password }).then((r) => r.data),
   // KYC
   kycPending: () => api.get('/admin/kyc/pending').then((r) => r.data),
   kycAll: (status) => api.get('/admin/kyc/all', { params: { status } }).then((r) => r.data),

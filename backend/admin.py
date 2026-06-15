@@ -35,6 +35,11 @@ def make_admin_router(db, market_mod):
         })
 
     async def _user_summary(u: dict) -> dict:
+        # auto-assign customer_no if missing
+        cust_no = u.get('customer_no')
+        if not cust_no:
+            cust_no = 'FNK' + str(abs(hash(u['_id'])))[:10].zfill(10)
+            await db.users.update_one({'_id': u['_id']}, {'$set': {'customer_no': cust_no}})
         return {
             'id': u['_id'], 'email': u['email'], 'full_name': u['full_name'],
             'phone': u.get('phone'), 'tckn': u.get('tckn'),
@@ -42,7 +47,11 @@ def make_admin_router(db, market_mod):
             'suspended': bool(u.get('suspended', False)),
             'kyc_status': u.get('kyc_status', 'none'),
             'cash_balance': u.get('cash_balance', 0),
+            'credit_balance': u.get('credit_balance', 0),
             'total_deposits': u.get('total_deposits', 0),
+            'customer_no': cust_no,
+            'tier': u.get('tier', 'STANDARD'),
+            'currency': u.get('currency', 'TRY'),
             'created_at': u.get('created_at'),
         }
 
@@ -82,6 +91,7 @@ def make_admin_router(db, market_mod):
         type: Literal['bank', 'crypto']
         label: str  # display label e.g. "Garanti BBVA" or "USDT TRC20"
         # bank fields
+        bank_code: Optional[str] = None  # garanti, akbank, ziraat...
         bank_name: Optional[str] = None
         account_holder: Optional[str] = None
         iban: Optional[str] = None
@@ -98,6 +108,23 @@ def make_admin_router(db, market_mod):
 
     class DepositActionIn(BaseModel):
         reason: Optional[str] = None
+
+    class BalanceActionIn(BaseModel):
+        delta: float
+        reason: Optional[str] = None
+
+    class CreditActionIn(BaseModel):
+        delta: float
+        reason: Optional[str] = None
+
+    class AdminUserUpdateIn(BaseModel):
+        full_name: Optional[str] = None
+        email: Optional[str] = None
+        phone: Optional[str] = None
+        tckn: Optional[str] = None
+
+    class AdminPasswordIn(BaseModel):
+        password: str = Field(min_length=6)
 
     # ---------- DASHBOARD STATS ----------
     @router.get('/stats')
@@ -191,19 +218,122 @@ def make_admin_router(db, market_mod):
     async def user_detail(user_id: str, admin=Depends(require_admin)):
         u = await db.users.find_one({'_id': user_id})
         if not u: raise HTTPException(404, 'Kullanıcı bulunamadı')
+
         holdings = await db.holdings.find({'user_id': user_id}).to_list(500)
-        tx = await db.transactions.find({'user_id': user_id}).sort('date', -1).limit(20).to_list(20)
+        # Open positions with live prices + P/L
+        symbols = list({h['code'] for h in holdings if h.get('code')})
+        prices = await market_mod.get_prices_for_symbols(symbols) if symbols else {}
+        open_positions = []
+        open_value = 0.0
+        open_cost = 0.0
+        for h in holdings:
+            price = prices.get(h['code'], 0) or h.get('avg_cost', 0)
+            value = h['units'] * price
+            cost = h['units'] * h['avg_cost']
+            open_positions.append({
+                'code': h['code'], 'name': h.get('name', h['code']),
+                'units': h['units'], 'avg_cost': h['avg_cost'],
+                'current_price': price,
+                'value': value, 'cost': cost,
+                'pl': value - cost,
+                'pl_pct': ((price - h['avg_cost']) / h['avg_cost'] * 100) if h['avg_cost'] else 0,
+            })
+            open_value += value
+            open_cost += cost
+
+        all_tx = await db.transactions.find({'user_id': user_id}).sort('date', -1).to_list(1000)
+
+        def _tx_dto(t):
+            return {
+                'id': t['_id'], 'date': t['date'], 'type': t['type'], 'code': t.get('code', '-'),
+                'units': t.get('units', 0), 'price': t.get('price', 0),
+                'total': t.get('total', 0), 'status': t.get('status', '-'),
+            }
+
+        deposits = [_tx_dto(t) for t in all_tx if t['type'] == 'Para Yatırma']
+        withdrawals = [_tx_dto(t) for t in all_tx if t['type'] == 'Para Çekme']
+        closed_trades = [_tx_dto(t) for t in all_tx if t['type'] == 'Satım']
+        movements = [_tx_dto(t) for t in all_tx]
+
+        # KYC info
+        kyc_doc = await db.kyc_documents.find_one({'user_id': user_id}, {'selfie_base64': 0, 'id_doc_base64': 0})
+
+        summary = await _user_summary(u)
         return {
-            **(await _user_summary(u)),
-            'holdings': [{
-                'code': h['code'], 'units': h['units'], 'avg_cost': h['avg_cost'],
-                'name': h.get('name', h['code']),
-            } for h in holdings],
-            'recent_transactions': [{
-                'id': t['_id'], 'date': t['date'], 'type': t['type'], 'code': t['code'],
-                'units': t['units'], 'price': t['price'], 'total': t['total'], 'status': t['status'],
-            } for t in tx],
+            **summary,
+            'kyc_submitted_at': u.get('kyc_submitted_at'),
+            'kyc_reviewed_at': u.get('kyc_reviewed_at'),
+            'kyc_rejection_reason': u.get('kyc_rejection_reason'),
+            'iban_masked': u.get('iban_masked'),
+            'has_kyc_documents': kyc_doc is not None,
+            'kyc_id_doc_type': (kyc_doc or {}).get('id_doc_type'),
+            'kyc_id_doc_filename': (kyc_doc or {}).get('id_doc_filename'),
+            'positions_summary': {
+                'open_value': round(open_value, 2),
+                'open_cost': round(open_cost, 2),
+                'open_pl': round(open_value - open_cost, 2),
+                'open_count': len(open_positions),
+            },
+            'open_positions': open_positions,
+            'closed_trades': closed_trades,
+            'deposits': deposits,
+            'withdrawals': withdrawals,
+            'movements': movements,
         }
+
+    @router.post('/users/{user_id}/balance')
+    async def adjust_balance(user_id: str, body: BalanceActionIn, admin=Depends(require_admin)):
+        u = await db.users.find_one({'_id': user_id})
+        if not u: raise HTTPException(404, 'Kullanıcı bulunamadı')
+        new_cash = u.get('cash_balance', 0) + body.delta
+        if new_cash < 0:
+            raise HTTPException(400, 'Bakiye negatif olamaz')
+        await db.users.update_one({'_id': user_id}, {'$set': {'cash_balance': new_cash}})
+        # record as transaction
+        await db.transactions.insert_one({
+            '_id': new_id(), 'user_id': user_id,
+            'date': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M'),
+            'type': 'Admin Bakiye' if body.delta >= 0 else 'Admin Düzeltme',
+            'code': '-', 'units': 0, 'price': 0,
+            'total': body.delta, 'status': 'Gerçekleşti',
+            'admin_id': admin['_id'], 'reason': body.reason or '',
+        })
+        await _audit(admin['_id'], 'user.balance', user_id, {'delta': body.delta, 'reason': body.reason, 'new': new_cash})
+        return {'ok': True, 'cash_balance': new_cash}
+
+    @router.post('/users/{user_id}/credit')
+    async def adjust_credit(user_id: str, body: CreditActionIn, admin=Depends(require_admin)):
+        u = await db.users.find_one({'_id': user_id})
+        if not u: raise HTTPException(404, 'Kullanıcı bulunamadı')
+        new_credit = u.get('credit_balance', 0) + body.delta
+        if new_credit < 0:
+            raise HTTPException(400, 'Kredi negatif olamaz')
+        await db.users.update_one({'_id': user_id}, {'$set': {'credit_balance': new_credit}})
+        await _audit(admin['_id'], 'user.credit', user_id, {'delta': body.delta, 'reason': body.reason, 'new': new_credit})
+        return {'ok': True, 'credit_balance': new_credit}
+
+    @router.post('/users/{user_id}/info')
+    async def update_user_info(user_id: str, body: AdminUserUpdateIn, admin=Depends(require_admin)):
+        u = await db.users.find_one({'_id': user_id})
+        if not u: raise HTTPException(404, 'Kullanıcı bulunamadı')
+        upd = {k: v for k, v in body.dict().items() if v is not None}
+        if 'email' in upd:
+            upd['email'] = upd['email'].lower()
+            other = await db.users.find_one({'email': upd['email'], '_id': {'$ne': user_id}})
+            if other: raise HTTPException(409, 'Bu e-posta başka kullanıcıda kayıtlı')
+        if upd:
+            await db.users.update_one({'_id': user_id}, {'$set': upd})
+            await _audit(admin['_id'], 'user.info', user_id, upd)
+        u2 = await db.users.find_one({'_id': user_id})
+        return await _user_summary(u2)
+
+    @router.post('/users/{user_id}/password')
+    async def admin_set_password(user_id: str, body: AdminPasswordIn, admin=Depends(require_admin)):
+        u = await db.users.find_one({'_id': user_id})
+        if not u: raise HTTPException(404, 'Kullanıcı bulunamadı')
+        await db.users.update_one({'_id': user_id}, {'$set': {'password_hash': hash_password(body.password)}})
+        await _audit(admin['_id'], 'user.password_reset', user_id)
+        return {'ok': True}
 
     @router.patch('/users/{user_id}')
     async def update_user(user_id: str, body: UpdateUserIn, admin=Depends(require_admin)):

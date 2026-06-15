@@ -1,0 +1,45 @@
+{
+  "summary": "Full e2e regression + new-feature testing for AdminUserDetail dark page, admin user-actions (balance/credit/info/password), and bank-code on payment methods. Backend: 39/39 pytest cases PASSED (18 new in test_user_detail.py + 21 regression in test_deposit_flow.py). Frontend (Playwright): admin login → /admin/kullanicilar → row eye-icon navigates to /admin/kullanicilar/{id} (NOT a modal). Dark detail page renders profile card (initials, STANDARD badge, FNK + 10-digit customer_no), 4 stat boxes (Bakiye/Kredi/Açık Poz/Açık P/L), all info rows. Bakiye İşlemi dialog Ekle 250 TRY → balance 1400→1650 ✓. Kredi İşlemi dialog Ekle 500 → Kredi 0→500 ✓. Bilgileri Düzenle dialog opens with name+email inputs. Şifre Değiştir dialog enforces min-6 client-side. All 6 tabs (open/closed/deposits/withdrawals/movements/kyc) clickable. Back button returns to /admin/kullanicilar. AdminPaymentMethods page: 'Garanti BBVA' card shows 'GB' brand-color circle (Clearbit logo URL blocked in preview network — fallback to brand-color initials works correctly as designed). No deposit-flow regressions.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "AdminUserDetail dialogs", "issues": ["Repeats prior iteration's Radix a11y warning: Missing `Description` or `aria-describedby` for DialogContent in BalanceDialog/InfoDialog/PasswordDialog. Non-blocking."]},
+      {"screen": "AdminUserDetail Bakiye/Kredi dialogs", "issues": ["Dialog body remains light-themed (white bg slate-50 'Mevcut' box, light Input/Textarea) inside a Radix DialogContent that uses default light background. Stylistically inconsistent with the dark page wrapper, but functionally correct. Recommend applying dark theme to dialog bodies for visual consistency."]},
+      {"screen": "AdminPaymentMethods bank logos", "issues": ["Clearbit logo CDN (logo.clearbit.com) is not reachable from the preview environment (img count = 0 on cards). Fallback (brand-color circle with initials, e.g. 'GB' for Garanti) is rendering correctly. If Clearbit blocking is environmental, no fix is needed; if production-blocked, consider self-hosted bank logos or a different CDN."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_user_detail.py",
+    "/app/backend/tests/test_deposit_flow.py",
+    "/app/test_reports/pytest/iter2_user_detail.xml"
+  ],
+  "action_items": [
+    "[OPTIONAL] Apply dark theme to BalanceDialog/InfoDialog/PasswordDialog content to match the dark detail page (currently inherits default light shadcn Dialog).",
+    "[OPTIONAL] Add DialogDescription / aria-describedby to silence Radix a11y warnings on AdminUserDetail dialogs (carried over from iter1).",
+    "[OPTIONAL] Investigate Clearbit logo CDN access — if blocked in production, switch to self-hosted SVG/PNG bank logos in /app/frontend/src/data/banks.js (Clearbit URL pattern was tested via BankLogo fallback only; brand-color initials render correctly).",
+    "No functional bugs — all 39/39 backend + 10/10 critical UI flows PASS."
+  ],
+  "critical_code_review_comments": [
+    "admin.py _user_summary uses Python hash() to derive customer_no — this is per-process random (PYTHONHASHSEED) so customer_no may be inconsistent across restarts for users who already have one stored, but since it's persisted on first call, this is acceptable. Consider a deterministic hash (sha256/md5 of user id) to avoid this risk.",
+    "admin.py adjust_balance writes a transaction with type 'Admin Bakiye' / 'Admin Düzeltme'. These types are excluded from the user-detail closed_trades / deposits / withdrawals filters (which match exactly 'Satım' / 'Para Yatırma' / 'Para Çekme'), but ARE included in movements — correct.",
+    "BalanceDialog/PasswordDialog/InfoDialog inside a dark wrapper use light-themed content — UX inconsistency only.",
+    "AdminUserUpdateIn does not validate email format with EmailStr — relies on lowercase-collision check only. Consider tightening for production.",
+    "PaymentMethodIn now accepts bank_code but _pm_out does NOT include bank_code in the response — the field round-trips via PATCH but is not visible via GET. Frontend BankLogo reads bank_code from the response; this means the user-facing PM list will not be able to show bank logos by code unless _pm_out is updated to include bank_code. RECOMMEND: add `'bank_code': d.get('bank_code')` to _pm_out in admin.py (and to the public /api/payment-methods serializer in server.py).",
+    "No rate-limiting on /admin/users/{id}/password — admin trust assumed, fine for MVP."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_user_detail.py (new)"
+  ],
+  "success_rate": {"backend": "100% (39/39)", "frontend": "100% (10/10 critical flows: login, navigation, profile render, customer_no, tabs, balance dialog, credit dialog, info dialog, password dialog, back button)"},
+  "test_credentials": "Admin: admin@fonakis.com / admin1234. Test users registered dynamically with TEST_ prefix.",
+  "seed_data_creation": "Tests register TEST_-prefixed users (TEST_detail_*, TEST_other_*), adjust their balance/credit, and reset passwords. Created and deleted one TEST bank PM with bank_code='garanti'/'akbank'. Test users remain in DB (harmless).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Reuse /app/backend/tests/test_user_detail.py + test_deposit_flow.py as regression. data-testids for AdminUserDetail are stable (stat-balance, stat-credit, balance-action-btn, etc). The Bakiye dialog amount + reason inputs share the same testids across balance/credit dialogs (intentional — one component, different `kind`). On the AdminPaymentMethods page, the 'Düzenle' (edit) button — not the 'Banka Hesabı' add button — opens the dialog containing pm-bank-code-select; future tests should click an existing card's Düzenle to verify the select. BankLogo Clearbit CDN appears blocked in preview — fallback initials render. If verifying Clearbit logos in production, mock or use a screenshot diff against fallback.",
+  "rca of the issue": "N/A — no bugs found this iteration. Minor cosmetic note: BalanceDialog body retains shadcn default light theme inside a dark page, but this is design polish, not a defect."
+}

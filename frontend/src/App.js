@@ -29,6 +29,7 @@ import AdminSettings from './pages/admin/AdminSettings';
 import AdminAuditLog from './pages/admin/AdminAuditLog';
 import AdminPaymentMethods from './pages/admin/AdminPaymentMethods';
 import AdminDepositRequests from './pages/admin/AdminDepositRequests';
+import AdminUserDetail from './pages/admin/AdminUserDetail';
 
 const Loading = () => <div className="min-h-screen flex items-center justify-center text-slate-400">Yükleniyor…</div>;
 
@@ -79,6 +80,7 @@ function App() {
               <Route element={<AdminLayout />}>
                 <Route path="/admin/panel" element={<AdminDashboard />} />
                 <Route path="/admin/kullanicilar" element={<AdminUsers />} />
+                <Route path="/admin/kullanicilar/:id" element={<AdminUserDetail />} />
                 <Route path="/admin/kyc" element={<AdminKyc />} />
                 <Route path="/admin/islemler" element={<AdminTransactions />} />
                 <Route path="/admin/yatirim-talepleri" element={<AdminDepositRequests />} />

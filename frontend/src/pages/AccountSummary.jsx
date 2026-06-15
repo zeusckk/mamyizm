@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs'
 import { toast } from 'sonner';
 import { ArrowDownToLine, ArrowUpFromLine, Building2, CreditCard, Wallet, Copy, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { paymentMethodsApi, depositRequestsApi } from '../api/client';
+import { BankLogo } from '../components/BankLogo';
 
 const statusUI = (s) => ({
   pending: { l: 'Beklemede', c: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
@@ -146,11 +147,14 @@ const AccountSummary = () => {
                       {banks.length === 0 && <div className="text-center text-slate-400 text-sm py-6">Şu an aktif banka hesabı yok.</div>}
                       {banks.map((b) => (
                         <button key={b.id} onClick={() => setSelectedPm(b)} className={`w-full text-left fa-card p-3 transition border ${selectedPm?.id === b.id ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-slate-200 hover:border-slate-300'}`} data-testid={`pm-bank-${b.id}`}>
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="font-bold text-[#0B2447]">{b.label}</div>
-                            <span className="text-[10px] uppercase font-bold tracking-wider bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{b.bank_name}</span>
+                          <div className="flex items-center gap-3 mb-1">
+                            <BankLogo code={b.bank_code} name={b.bank_name} size={40} />
+                            <div className="flex-1 min-w-0">
+                              <div className="font-bold text-[#0B2447] truncate">{b.label}</div>
+                              <div className="text-xs text-slate-600">{b.account_holder}</div>
+                            </div>
+                            <span className="text-[10px] uppercase font-bold tracking-wider bg-blue-50 text-blue-700 px-2 py-0.5 rounded shrink-0">{b.bank_name}</span>
                           </div>
-                          <div className="text-xs text-slate-600">{b.account_holder}</div>
                           <div className="flex items-center justify-between mt-1.5 gap-2">
                             <span className="font-mono text-xs text-[#0B2447] truncate">{b.iban}</span>
                             <button onClick={(e) => { e.stopPropagation(); copy(b.iban); }} className="text-slate-400 hover:text-[#0B2447] shrink-0"><Copy size={13} /></button>

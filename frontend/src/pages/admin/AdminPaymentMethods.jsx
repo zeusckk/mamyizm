@@ -9,8 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Plus, Edit, Trash2, RefreshCw, Wallet, Building2, Copy } from 'lucide-react';
 import { toast } from 'sonner';
+import { BANKS, getBank } from '../../data/banks';
+import { BankLogo } from '../../components/BankLogo';
 
-const emptyBank = { type: 'bank', label: '', bank_name: '', account_holder: '', iban: '', account_number: '', branch: '', active: true, notes: '' };
+const emptyBank = { type: 'bank', label: '', bank_code: 'garanti', bank_name: 'Garanti BBVA', account_holder: '', iban: '', account_number: '', branch: '', active: true, notes: '' };
 const emptyCrypto = { type: 'crypto', label: '', currency: 'USDT', network: 'TRC20', address: '', memo: '', active: true, notes: '' };
 
 const NETWORKS = ['TRC20', 'ERC20', 'BEP20', 'Bitcoin', 'Polygon', 'Solana'];
@@ -85,10 +87,13 @@ const AdminPaymentMethods = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {banks.map((b) => (
                 <div key={b.id} className={`fa-card fa-glow p-4 ${!b.active ? 'opacity-60' : ''}`} data-testid={`pm-bank-${b.id}`}>
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <div className="text-xs text-slate-500 mb-0.5">{b.bank_name || 'Banka'}</div>
-                      <div className="font-bold text-[#0B2447] text-base">{b.label}</div>
+                  <div className="flex items-start justify-between mb-2 gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <BankLogo code={b.bank_code} name={b.bank_name} size={44} />
+                      <div className="min-w-0">
+                        <div className="text-xs text-slate-500 truncate">{b.bank_name || 'Banka'}</div>
+                        <div className="font-bold text-[#0B2447] text-base truncate">{b.label}</div>
+                      </div>
                     </div>
                     <Switch checked={!!b.active} onCheckedChange={() => toggleActive(b)} />
                   </div>
@@ -150,7 +155,12 @@ const AdminPaymentMethods = () => {
               {edit.type === 'bank' ? (
                 <>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label className="text-xs">Banka Adı</Label><Input value={edit.bank_name || ''} onChange={(e) => setEdit({ ...edit, bank_name: e.target.value })} className="mt-1" /></div>
+                    <div><Label className="text-xs">Banka</Label>
+                      <Select value={edit.bank_code || 'other'} onValueChange={(v) => { const b = getBank(v); setEdit({ ...edit, bank_code: v, bank_name: b.name, label: edit.label || b.name }); }}>
+                        <SelectTrigger className="mt-1" data-testid="pm-bank-code-select"><SelectValue /></SelectTrigger>
+                        <SelectContent className="max-h-80">{BANKS.map((bk) => <SelectItem key={bk.code} value={bk.code}>{bk.name}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
                     <div><Label className="text-xs">Şube</Label><Input value={edit.branch || ''} onChange={(e) => setEdit({ ...edit, branch: e.target.value })} className="mt-1" /></div>
                   </div>
                   <div><Label className="text-xs">Hesap Sahibi</Label><Input value={edit.account_holder || ''} onChange={(e) => setEdit({ ...edit, account_holder: e.target.value })} className="mt-1" data-testid="pm-holder-input" /></div>
