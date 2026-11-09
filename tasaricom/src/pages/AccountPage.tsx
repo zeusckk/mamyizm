@@ -25,7 +25,7 @@ export function AccountPage() {
         </div>
       </div>
 
-      <section className="card" style={{ marginBottom: 14, background: 'linear-gradient(180deg, #fff8e8, var(--paper))' }}>
+      <section className="card" style={{ marginBottom: 14 }}>
         <div className="inline">
           <div className="grow">
             <div className="muted">Mevcut paket</div>
