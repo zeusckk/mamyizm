@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { PosterFrame } from '../PosterFrame'
 import { FORMATS, occasionById } from '../data'
 import { useStore } from '../store'
@@ -21,9 +22,18 @@ export function EditorPage() {
         </div>
       </div>
       {queue.length === 0 ? (
-        <div className="card">
-          <strong>Kuyruk boş.</strong>
-          <p className="muted">Stüdyoda bir taslak çıkarıp “Editöre gönder” dersen burada görünür.</p>
+        <div className="card empty">
+          <div className="kicker">ATÖLYE</div>
+          <h2>Kuyruk boş</h2>
+          <p className="muted">Müşteri bir taslağı editöre bırakınca aynı poster burada açılır.</p>
+          <ol className="steps">
+            <li>1. Stüdyoda günü ve briefi seç</li>
+            <li>2. Taslak hazır olunca “Editöre gönder”</li>
+            <li>3. Yerleşimi düzelt, not düş, teslim et</li>
+          </ol>
+          <Link to="/" className="btn-accent" style={{ textDecoration: 'none' }}>
+            Stüdyoya git
+          </Link>
         </div>
       ) : (
         <div className="identity">

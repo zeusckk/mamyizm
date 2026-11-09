@@ -23,7 +23,7 @@ export function DesignsPage() {
       <div className="page-head">
         <div>
           <h1>Tasarımlarım</h1>
-          <p className="muted">Üretilenler, editöre gidenler ve onayladıkların.</p>
+          <p className="muted">{state.designs.length} iş. Taslak, editör ve onay burada durur.</p>
         </div>
         <Link to="/" className="btn-accent" style={{ textDecoration: 'none' }}>
           Yeni tasarım
@@ -37,10 +37,13 @@ export function DesignsPage() {
         ))}
       </div>
       {items.length === 0 ? (
-        <div className="card" style={{ marginTop: 16 }}>
-          <strong>Henüz tasarım yok.</strong>
-          <p className="muted">Stüdyoda bir özel gün seçip ilk taslağı çıkar.</p>
-          <Link to="/">Stüdyoya git</Link>
+        <div className="card empty">
+          <div className="kicker">GALERİ</div>
+          <h2>Henüz tasarım yok</h2>
+          <p className="muted">Stüdyoda bir özel gün seç. Taslak, logon ve renklerinle burada birikir.</p>
+          <Link to="/" className="btn-accent" style={{ textDecoration: 'none' }}>
+            Stüdyoya git
+          </Link>
         </div>
       ) : (
         <div className="design-grid">
@@ -55,9 +58,8 @@ export function DesignsPage() {
               )}
               <div className="meta">
                 <strong>{occasionById(design.occasionId).title}</strong>
-                <small>
-                  {design.day ? formatShort(design.day) : 'Tarihsiz'} · {design.pending ? 'Hazırlanıyor' : STATUS_LABEL[design.status]}
-                </small>
+                <small>{design.day ? formatShort(design.day) : 'Tarihsiz'}</small>
+                <span className={`status ${design.status}`}>{design.pending ? 'Hazırlanıyor' : STATUS_LABEL[design.status]}</span>
               </div>
             </Link>
           ))}

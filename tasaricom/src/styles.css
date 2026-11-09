@@ -765,6 +765,93 @@ input[type='email'] {
 :root[data-theme='dark'] .status.approved { background: rgba(80, 200, 140, 0.16); color: #b7ebc9; }
 :root[data-theme='dark'] .status.editor { background: rgba(255, 140, 110, 0.16); color: #ffc1ae; }
 :root[data-theme='dark'] .status.delivered { background: rgba(140, 170, 255, 0.16); color: #c5d4ff; }
+
+.kicker {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.page-wide { max-width: 1080px; }
+.brand-layout, .account-layout {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 14px;
+  align-items: start;
+}
+.brand-hero, .plan-hero {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.logo-slot.lg {
+  width: 92px;
+  height: 92px;
+  flex: none;
+  font-family: var(--serif);
+  font-size: 34px;
+}
+.swatches { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: var(--shadow-sm);
+}
+.color-band {
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+}
+.facts { display: grid; gap: 10px; margin: 0; }
+.facts div { display: grid; gap: 2px; }
+.facts dt { color: var(--muted); font-size: 13px; }
+.facts dd { margin: 0; font-weight: 560; }
+.empty {
+  margin-top: 16px;
+  padding: 32px 22px;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.empty h2 { font-size: 34px; }
+.steps {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 12px;
+  display: grid;
+  gap: 8px;
+  width: min(100%, 420px);
+  text-align: left;
+}
+.steps li {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--chip);
+  border: 1px solid var(--glass-line);
+}
+.pane {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  border-radius: 24px;
+  padding: 14px;
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+}
+.plan.rec {
+  outline: 1px solid rgba(255, 90, 60, 0.75);
+  box-shadow: 0 18px 44px rgba(255, 90, 60, 0.16), var(--glass-shadow);
+}
+.design-card .meta { background: transparent; }
+.sticky-col { position: sticky; top: 8px; }
+@media (max-width: 860px) {
+  .brand-layout, .account-layout { grid-template-columns: 1fr; }
+  .brand-hero, .plan-hero { flex-direction: column; align-items: flex-start; }
+  .sticky-col { position: static; }
+}
 .cell.empty { background: transparent; border-color: transparent; box-shadow: none; backdrop-filter: none; }
 @media (prefers-reduced-transparency: reduce) {
   .side,

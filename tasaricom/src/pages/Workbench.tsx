@@ -50,7 +50,7 @@ export function Workbench() {
 
   return (
     <div className="work">
-      <section className="col">
+      <section className="col pane">
         <Link to="/" className="muted">
           ← Stüdyo
         </Link>
@@ -124,7 +124,7 @@ export function Workbench() {
         )}
       </section>
 
-      <section className="col">
+      <section className="col pane">
         <div className="panel stack">
           <div className="inline">
             <span className={`status ${design.status}`}>{design.pending ? 'Hazırlanıyor' : STATUS_LABEL[design.status]}</span>

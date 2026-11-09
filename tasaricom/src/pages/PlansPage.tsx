@@ -84,7 +84,8 @@ export function PlansPage() {
       {note ? <p className="credits-line">{note} Şu an: {current.name}.</p> : null}
 
       <section className="panel" style={{ marginTop: 22 }}>
-        <h2 style={{ fontSize: 28, marginBottom: 8 }}>Sık sorulanlar</h2>
+        <div className="kicker">MERAK EDİLENLER</div>
+        <h2 style={{ fontSize: 28, margin: '6px 0 8px' }}>Sık sorulanlar</h2>
         {FAQ.map(([q, a]) => (
           <details key={q}>
             <summary>{q}</summary>

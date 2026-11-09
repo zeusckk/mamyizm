@@ -26,10 +26,14 @@ export function AccountPage() {
       </div>
 
       <section className="card" style={{ marginBottom: 14 }}>
-        <div className="inline">
+        <div className="plan-hero">
+          <div className="logo-slot lg">
+            {state.brand.logoDataUrl ? <img src={state.brand.logoDataUrl} alt="" /> : (state.brand.name || 'M').slice(0, 1)}
+          </div>
           <div className="grow">
-            <div className="muted">Mevcut paket</div>
+            <div className="kicker">MEVCUT PAKET</div>
             <h2>{plan.name}</h2>
+            <p className="muted">{state.brand.name || 'Marka'} · {plan.blurb}</p>
           </div>
           <span className="badge ok">Aktif</span>
         </div>

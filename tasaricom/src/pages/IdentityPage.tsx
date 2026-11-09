@@ -82,6 +82,8 @@ export function IdentityPage() {
       <div className="identity">
         <div className="stack">
           <section className="panel stack">
+            <div className="kicker">KİMLİK</div>
+            <div className="color-band" style={{ background: `linear-gradient(90deg, ${form.colors.primary}, ${form.colors.secondary})` }} />
             <div className="inline">
               <div className="logo-slot">
                 {form.logoDataUrl ? <img src={form.logoDataUrl} alt="" /> : (form.name || 'M').slice(0, 1)}
@@ -144,9 +146,10 @@ export function IdentityPage() {
           </section>
         </div>
 
-        <div className="stack">
+        <div className="stack sticky-col">
           <PosterFrame design={preview} brand={form} plan={state.plan} />
           <section className="panel stack">
+            <div className="kicker">ÜSLUP</div>
             <div className="field">
               <span>Marka sesi · en fazla 3</span>
               <div className="choice-grid">
